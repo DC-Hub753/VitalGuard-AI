@@ -28,3 +28,11 @@ pnpm-debug.log*
 coverage/
 playwright-report/
 test-results/
+
+# Python & SQLite
+__pycache__/
+*.py[cod]
+*$py.class
+*.sqlite3
+backend/vitalguard_demo.sqlite3
+

@@ -5,7 +5,9 @@ new version rather than editing a previously released migration. This remains
 a lightweight SQLAlchemy migration runner; a managed PostgreSQL service and
 backup/restore drill are separate release requirements.
 """
+
 from sqlalchemy import Column, DateTime, Integer, MetaData, Table, func, insert, select, text
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.engine import Engine
 
 from .storage import _METADATA
@@ -21,7 +23,7 @@ MIGRATIONS = Table(
 
 # Keep migration definitions immutable after release. Each step should be
 # safe to re-run after an interrupted startup.
-LATEST_VERSION = 3
+LATEST_VERSION = 6
 
 
 
@@ -69,7 +71,97 @@ def migrate(engine: Engine) -> None:
         # Repair a missing table after an interrupted restore without rewriting the ledger.
         _INGESTION_METADATA.create_all(engine)
 
+    # Version 4: extend patients with sex, date_of_birth, ward, bed, active, created_by.
+    # Renamed the old 'unit' column to 'ward'. For existing databases that
+    # already have the patients table from version 1, we add columns individually.
+    applied = _applied_versions(engine)
+    if 4 not in applied:
+        _add_patients_columns(engine)
+        _record_version(engine, 4)
+    else:
+        _add_patients_columns(engine)
+
+    # Version 5: establish users table with PBKDF2 password hashes and RBAC roles (admin, clinician, nurse).
+    applied = _applied_versions(engine)
+    if 5 not in applied:
+        _EXTENDED_METADATA.tables["users"].create(engine, checkfirst=True)
+        _seed_demo_users_if_empty(engine)
+        _record_version(engine, 5)
+    else:
+        _EXTENDED_METADATA.tables["users"].create(engine, checkfirst=True)
+        _seed_demo_users_if_empty(engine)
+
+    # Version 6: add source_mode and quality_json to ingestion_records.
+    applied = _applied_versions(engine)
+    if 6 not in applied:
+        _add_ingestion_columns(engine)
+        _record_version(engine, 6)
+    else:
+        _add_ingestion_columns(engine)
+
     applied = _applied_versions(engine)
     expected = set(range(1, LATEST_VERSION + 1))
     if not expected.issubset(applied):
         raise RuntimeError(f"Database migrations incomplete: expected {sorted(expected)}, found {sorted(applied)}")
+
+
+def _add_patients_columns(engine: Engine) -> None:
+    """Idempotently add Phase-1 columns to the patients table.
+
+    PostgreSQL supports ADD COLUMN IF NOT EXISTS natively.
+    SQLite does not, so we catch the duplicate-column OperationalError.
+    """
+    columns = [
+        "ALTER TABLE patients ADD COLUMN sex VARCHAR(1) NOT NULL DEFAULT 'U'",
+        "ALTER TABLE patients ADD COLUMN date_of_birth VARCHAR(10)",
+        "ALTER TABLE patients ADD COLUMN ward VARCHAR(80) NOT NULL DEFAULT 'General Ward'",
+        "ALTER TABLE patients ADD COLUMN bed VARCHAR(20) NOT NULL DEFAULT ''",
+        "ALTER TABLE patients ADD COLUMN active BOOLEAN NOT NULL DEFAULT TRUE",
+        "ALTER TABLE patients ADD COLUMN created_by VARCHAR(120) NOT NULL DEFAULT 'demo-system'",
+    ]
+    is_postgresql = engine.dialect.name == "postgresql"
+    with engine.begin() as connection:
+        for ddl in columns:
+            if is_postgresql:
+                # Use IF NOT EXISTS for PostgreSQL.
+                ddl = ddl.replace("ADD COLUMN ", "ADD COLUMN IF NOT EXISTS ", 1)
+            try:
+                connection.execute(text(ddl))
+            except OperationalError:
+                # SQLite: column already exists from a previous run or create_all.
+                pass
+        # Migrate data from the old 'unit' column to 'ward' if 'unit' still exists.
+        try:
+            connection.execute(text(
+                "UPDATE patients SET ward = unit WHERE ward = 'General Ward' AND unit IS NOT NULL AND unit != 'Demo Ward'"
+            ))
+        except OperationalError:
+            pass
+
+
+def _seed_demo_users_if_empty(engine: Engine) -> None:
+    """Seed initial role accounts if the users table is completely empty."""
+    from .user_service import seed_initial_users
+    seed_initial_users(engine)
+
+
+def _add_ingestion_columns(engine: Engine) -> None:
+    """Idempotently add Phase-3 columns to ingestion_records table."""
+    columns = [
+        "ALTER TABLE ingestion_records ADD COLUMN source_mode VARCHAR(32) NOT NULL DEFAULT 'synthetic_demo'",
+        "ALTER TABLE ingestion_records ADD COLUMN quality_json TEXT NOT NULL DEFAULT '{}'",
+    ]
+    is_postgresql = engine.dialect.name == "postgresql"
+    with engine.begin() as connection:
+        for ddl in columns:
+            if is_postgresql:
+                ddl = ddl.replace("ADD COLUMN ", "ADD COLUMN IF NOT EXISTS ", 1)
+            try:
+                connection.execute(text(ddl))
+            except OperationalError:
+                pass
+        try:
+            connection.execute(text("CREATE INDEX IF NOT EXISTS idx_ingestion_source_mode ON ingestion_records (source_mode)"))
+        except OperationalError:
+            pass
+

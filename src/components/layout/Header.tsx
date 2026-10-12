@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, RefreshCw, LogOut } from 'lucide-react';
+import { Bell, RefreshCw, LogOut, ShieldCheck, Stethoscope, HeartPulse } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useSimulation } from '../../store/useSimulation.ts';
 import { formatTimeAgo } from '../../utils/format.ts';
@@ -9,9 +9,34 @@ export function Header({ title, subtitle }: { title: string; subtitle?: string }
   const { alerts, running, lastRefresh, refresh } = useSimulation();
   const auth = useOptionalAuth();
   const username = auth?.username ?? null;
-  const logout = auth?.logout ?? (() => {});
+  const role = auth?.role ?? null;
+  const fullName = auth?.fullName ?? username ?? 'Operator';
+  const logout = auth?.logout ?? (() => Promise.resolve());
   const open = alerts.filter((a) => a.status === 'open').length;
   const [spinning, setSpinning] = useState(false);
+
+  const roleBadge = () => {
+    if (role === 'admin') {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30">
+          <ShieldCheck size={11} /> Admin
+        </span>
+      );
+    }
+    if (role === 'clinician') {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/30">
+          <Stethoscope size={11} /> Clinician
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+        <HeartPulse size={11} /> Nurse
+      </span>
+    );
+  };
+
   return (
     <header className="sticky top-0 z-20 bg-[#f5f8fb]/85 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200/70 dark:border-slate-800/80">
       <div className="flex items-center gap-3 px-4 md:px-8 h-[70px]">
@@ -41,9 +66,23 @@ export function Header({ title, subtitle }: { title: string; subtitle?: string }
               <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-white text-[10px] grid place-items-center font-bold tabular-nums" style={{ background: 'linear-gradient(135deg,#e11d48,#f43f5e)' }}>{open}</span>
             )}
           </Link>
-          <span className="hidden md:grid place-items-center h-9 w-9 rounded-full text-white text-xs font-extrabold" style={{ background: 'linear-gradient(135deg,#0f766e,#0891b2)' }} aria-hidden>DR</span>
-          <span className="hidden lg:inline max-w-28 truncate text-xs text-slate-500" title={username ?? 'Operator'}>{username ?? 'Operator'}</span>
-          <button type="button" onClick={logout} aria-label="Sign out" title="Sign out" className="icon-btn"><LogOut size={17} aria-hidden /></button>
+
+          <div className="hidden md:flex items-center gap-2 pl-2 border-l border-slate-700/60">
+            {roleBadge()}
+            <span className="max-w-28 truncate text-xs font-medium text-slate-300" title={fullName}>
+              {fullName}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void logout()}
+            aria-label="Sign out"
+            title="Sign out"
+            className="icon-btn text-rose-400 hover:text-rose-300 hover:bg-rose-950/30"
+          >
+            <LogOut size={17} aria-hidden />
+          </button>
         </div>
       </div>
     </header>

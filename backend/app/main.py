@@ -21,8 +21,18 @@ from .alert_service import create_alert
 from .data_quality import assess_observations
 from .live_events import hub
 from .storage import database_health, initialize_storage, list_observations, save_observation
-from .auth import router as auth_router, authenticate_principal
+from .auth import router as auth_router, authenticate_principal, require_permission
 from .ingestion_routes import router as ingestion_router
+from .patient_routes import router as patient_router
+from .admin_routes import router as admin_router
+from .permissions import (
+    PERM_LIVE_SUBSCRIBE,
+    PERM_NEWS2_CALCULATE,
+    PERM_OBSERVATIONS_READ,
+    PERM_OPS_METRICS,
+    PERM_RISK_EXPLAIN,
+    PERM_RISK_PREDICT,
+)
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -32,11 +42,13 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="VitalGuard AI Risk Engine", version="0.8.0",
     description="Synthetic demo risk API. Not clinically validated and not for clinical use.", lifespan=lifespan)
 app.include_router(auth_router)
+app.include_router(admin_router)
 app.include_router(ingestion_router)
 app.include_router(simulator_router)
 app.include_router(alert_router)
 app.include_router(timeline_router)
 app.include_router(trend_router)
+app.include_router(patient_router)
 _default_origins = ["http://localhost:5173", "http://127.0.0.1:5173", "https://vitalguard-ai-g215.onrender.com"]
 _origins = os.getenv("CORS_ORIGINS", ",".join(_default_origins))
 app.add_middleware(CORSMiddleware, allow_origins=[origin.strip() for origin in _origins.split(",") if origin.strip()],
@@ -131,7 +143,7 @@ def operational_readiness(principal: dict = Depends(authenticate_principal)):
 
 
 @app.get("/api/v1/ops/metrics")
-def operational_metrics(principal: dict = Depends(authenticate_principal)):
+def operational_metrics(principal: dict = Depends(require_permission(PERM_OPS_METRICS))):
     """Return bounded-cardinality, process-local metrics without request data."""
     with _metrics_lock:
         count = _request_count
@@ -153,8 +165,12 @@ def operational_metrics(principal: dict = Depends(authenticate_principal)):
 @app.websocket("/api/v1/live")
 async def live_socket(websocket: WebSocket, token: str | None = Query(default=None)):
     from .auth import validate_access_token
+    from .permissions import role_has_permission, PERM_LIVE_SUBSCRIBE
     try:
-        validate_access_token(token)
+        principal = validate_access_token(token)
+        if not role_has_permission(principal.get("role", ""), PERM_LIVE_SUBSCRIBE):
+            await websocket.close(code=1008, reason="Forbidden: insufficient role permissions")
+            return
     except HTTPException:
         await websocket.close(code=1008, reason="Authentication required")
         return
@@ -168,7 +184,7 @@ def model_info(principal: dict = Depends(authenticate_principal)):
         "training_data": "generated synthetic observations only", "demo_only": True, "clinically_validated": False}
 
 @app.post("/api/v1/scores/news2")
-def calculate_news2(payload: NEWS2Input, principal: dict = Depends(authenticate_principal)):
+def calculate_news2(payload: NEWS2Input, principal: dict = Depends(require_permission(PERM_NEWS2_CALCULATE))):
     """Calculate parameter points for a fictional NEWS2 example; not clinical guidance."""
     return score_news2(payload.model_dump(exclude={"patient_id", "scale2_authorized"}))
 
@@ -182,7 +198,7 @@ def model_validation_diagnostics(principal: dict = Depends(authenticate_principa
     return evaluate_synthetic_calibration_and_subgroups()
 
 @app.post("/api/v1/risk/predict", response_model=RiskPrediction)
-async def predict(payload: VitalInput, principal: dict = Depends(authenticate_principal)):
+async def predict(payload: VitalInput, principal: dict = Depends(require_permission(PERM_RISK_PREDICT))):
     values = payload.model_dump(exclude={"patient_id"})
     probability = predict_probability(values)
     score = round(probability * 100)
@@ -198,7 +214,7 @@ async def predict(payload: VitalInput, principal: dict = Depends(authenticate_pr
     return response
 
 @app.post("/api/v1/risk/explain")
-def explain_risk(payload: VitalInput, principal: dict = Depends(authenticate_principal)):
+def explain_risk(payload: VitalInput, principal: dict = Depends(require_permission(PERM_RISK_EXPLAIN))):
     values = payload.model_dump(exclude={"patient_id"})
     return {"patient_id": payload.patient_id, "model_version": MODEL_VERSION,
         "risk_score": round(predict_probability(values) * 100),
@@ -210,7 +226,7 @@ def explain_risk(payload: VitalInput, principal: dict = Depends(authenticate_pri
 
 @app.get("/api/v1/observations")
 def observation_history(patient_id: str | None = Query(default=None, min_length=1, max_length=64),
-    limit: int = Query(default=50, ge=1, le=100), before_id: int | None = Query(default=None, ge=1), principal: dict = Depends(authenticate_principal)):
+    limit: int = Query(default=50, ge=1, le=100), before_id: int | None = Query(default=None, ge=1), principal: dict = Depends(require_permission(PERM_OBSERVATIONS_READ))):
     records = list_observations(patient_id=patient_id, limit=limit, before_id=before_id)
     next_cursor = records[-1]["id"] if len(records) == limit else None
     return {"items": records, "count": len(records), "limit": limit, "next_before_id": next_cursor,
@@ -218,6 +234,6 @@ def observation_history(patient_id: str | None = Query(default=None, min_length=
 
 @app.get("/api/v1/observations/quality")
 def observation_quality(stale_after_seconds: int = Query(default=300, ge=30, le=86400),
-    limit: int = Query(default=100, ge=1, le=100), principal: dict = Depends(authenticate_principal)):
+    limit: int = Query(default=100, ge=1, le=100), principal: dict = Depends(require_permission(PERM_OBSERVATIONS_READ))):
     records = list_observations(limit=limit)
     return assess_observations(records, stale_after_seconds=stale_after_seconds)

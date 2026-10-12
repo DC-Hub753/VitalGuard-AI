@@ -1,6 +1,6 @@
 """Additional durable tables for the synthetic VitalGuard demo."""
 from sqlalchemy import (
-    Column, DateTime, Index, Integer, MetaData, String, Table, Text, func,
+    Boolean, Column, DateTime, Index, Integer, MetaData, String, Table, Text, func,
 )
 
 metadata = MetaData()
@@ -9,7 +9,12 @@ patients = Table(
     "patients", metadata,
     Column("patient_id", String(64), primary_key=True),
     Column("display_name", String(120), nullable=False),
-    Column("unit", String(80), nullable=False, server_default="Demo Ward"),
+    Column("sex", String(1), nullable=False, server_default="U"),
+    Column("date_of_birth", String(10), nullable=True),
+    Column("ward", String(80), nullable=False, server_default="General Ward"),
+    Column("bed", String(20), nullable=False, server_default=""),
+    Column("active", Boolean, nullable=False, server_default="1"),
+    Column("created_by", String(120), nullable=False, server_default="demo-system"),
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
     Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()),
 )
@@ -41,3 +46,17 @@ audit_events = Table(
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
 )
 Index("idx_audit_entity_created", audit_events.c.entity_type, audit_events.c.entity_id, audit_events.c.created_at.desc())
+
+users = Table(
+    "users", metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("username", String(128), unique=True, nullable=False, index=True),
+    Column("password_hash", String(256), nullable=False),
+    Column("role", String(32), nullable=False, server_default="nurse"),
+    Column("full_name", String(120), nullable=False, server_default=""),
+    Column("active", Boolean, nullable=False, server_default="1"),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()),
+)
+Index("idx_users_username_active", users.c.username, users.c.active)
+

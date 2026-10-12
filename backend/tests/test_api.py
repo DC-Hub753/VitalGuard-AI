@@ -163,7 +163,9 @@ def test_auth_login_and_identity_round_trip(client, monkeypatch):
         "Authorization": f"Bearer {body['access_token']}"
     })
     assert identity.status_code == 200
-    assert identity.json() == {"subject": "demo-operator", "authenticated": True}
+    res_data = identity.json()
+    assert res_data["subject"] == "demo-operator"
+    assert res_data["authenticated"] is True
 
 
 def test_auth_rejects_invalid_credentials_and_tokens(client, monkeypatch):

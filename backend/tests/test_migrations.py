@@ -13,12 +13,14 @@ def test_migrations_create_required_tables_and_indexes(tmp_path, monkeypatch):
     try:
         inspector = inspect(engine)
         names = set(inspector.get_table_names())
-        assert {"observations", "patients", "alerts", "audit_events", "schema_migrations", "ingestion_records"} <= names
+        assert {"observations", "patients", "alerts", "audit_events", "schema_migrations", "ingestion_records", "users"} <= names
         with engine.connect() as connection:
             versions = connection.execute(select(MIGRATIONS.c.version).order_by(MIGRATIONS.c.version)).scalars().all()
-        assert versions == [1, 2, 3]
+        assert versions == [1, 2, 3, 4, 5, 6]
         index_names = {item["name"] for item in inspector.get_indexes("alerts")}
         assert "idx_alerts_patient_status_created" in index_names
+        ingestion_cols = {col["name"] for col in inspector.get_columns("ingestion_records")}
+        assert {"source_mode", "quality_json"}.issubset(ingestion_cols)
     finally:
         engine.dispose()
 
@@ -37,7 +39,7 @@ def test_v1_database_upgrades_to_v2_idempotently(tmp_path):
         migrate(engine)
         with engine.connect() as connection:
             versions = connection.execute(select(MIGRATIONS.c.version).order_by(MIGRATIONS.c.version)).scalars().all()
-        assert versions == [1, 2, 3]
+        assert versions == [1, 2, 3, 4, 5, 6]
         index_names = {item["name"] for item in inspect(engine).get_indexes("alerts")}
         assert "idx_alerts_patient_status_created" in index_names
     finally:
