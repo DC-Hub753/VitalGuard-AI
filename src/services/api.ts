@@ -68,16 +68,77 @@ async function get<T>(path: string): Promise<T> {
   return request<T>(path, { method: 'GET' });
 }
 export const api = {
-  listPatients: () => get('/api/v1/patients'),
-  getPatient: (id: string) => get(`/api/v1/patients/${encodeURIComponent(id)}`),
-  getVitals: (id: string) => get(`/api/v1/patients/${encodeURIComponent(id)}/vitals`),
-  getLatestVitals: (id: string) => get(`/api/v1/patients/${encodeURIComponent(id)}/vitals/latest`),
+  // Patients
+  listPatients: (ward?: string, limit = 100) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (ward && ward !== 'All') params.set('ward', ward);
+    return get<{ items: Array<any>; count: number; total: number }>(`/api/v1/patients?${params.toString()}`);
+  },
+  getPatient: (id: string) => get<any>(`/api/v1/patients/${encodeURIComponent(id)}`),
+  createPatient: (payload: { patient_id: string; display_name: string; sex?: string; ward?: string; bed?: string; date_of_birth?: string }) =>
+    request<any>('/api/v1/patients', { method: 'POST', body: JSON.stringify(payload) }),
+  updatePatient: (id: string, updates: Partial<{ display_name: string; ward: string; bed: string; active: boolean }>) =>
+    request<any>(`/api/v1/patients/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(updates) }),
+  deactivatePatient: (id: string) =>
+    request<any>(`/api/v1/patients/${encodeURIComponent(id)}/deactivate`, { method: 'POST' }),
+
+  // Prioritization & Alerts
+  getPrioritization: (ward?: string, riskCategory?: string) => {
+    const params = new URLSearchParams();
+    if (ward && ward !== 'All') params.set('ward', ward);
+    if (riskCategory && riskCategory !== 'All') params.set('risk_category', riskCategory);
+    return get<{ items: Array<any>; count: number; total: number }>(`/api/v1/alerts/prioritization?${params.toString()}`);
+  },
+  listAlerts: (params?: { status?: string; severity?: string; patient_id?: string; limit?: number }) => {
+    const search = new URLSearchParams({ limit: String(params?.limit ?? 100) });
+    if (params?.status && params.status !== 'all') search.set('status', params.status);
+    if (params?.severity && params.severity !== 'all') search.set('severity', params.severity);
+    if (params?.patient_id) search.set('patient_id', params.patient_id);
+    return get<{ items: Array<any>; count: number }>(`/api/v1/alerts?${search.toString()}`);
+  },
+  acknowledgeAlert: (id: string | number, note?: string) =>
+    request<any>(`/api/v1/alerts/${id}/acknowledge`, { method: 'POST', body: JSON.stringify({ note }) }),
+  assignAlert: (id: string | number, assignee: string, note?: string) =>
+    request<any>(`/api/v1/alerts/${id}/assign`, { method: 'POST', body: JSON.stringify({ assignee, note }) }),
+  resolveAlert: (id: string | number, note?: string) =>
+    request<any>(`/api/v1/alerts/${id}/resolve`, { method: 'POST', body: JSON.stringify({ note }) }),
+  reopenAlert: (id: string | number, reason: string) =>
+    request<any>(`/api/v1/alerts/${id}/reopen`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  addAlertNote: (id: string | number, note: string) =>
+    request<any>(`/api/v1/alerts/${id}/notes`, { method: 'POST', body: JSON.stringify({ note }) }),
+  getAlertAudit: (id: string | number) =>
+    get<{ items: Array<any>; count: number }>(`/api/v1/alerts/${id}/audit`),
+
+  // Observations & Clinical scoring
   predictRisk: (input: RiskPredictionInput) =>
     request<RiskPredictionResult>('/api/v1/risk/predict', { method: 'POST', body: JSON.stringify(input) }),
-  listObservations: (patientId?: string, limit = 10) => {
+  explainRisk: (input: RiskPredictionInput) =>
+    request<any>('/api/v1/risk/explain', { method: 'POST', body: JSON.stringify(input) }),
+  calculateNews2: (input: any) =>
+    request<any>('/api/v1/scores/news2', { method: 'POST', body: JSON.stringify(input) }),
+  listObservations: (patientId?: string, limit = 50) => {
     const params = new URLSearchParams({ limit: String(limit) });
     if (patientId) params.set('patient_id', patientId);
     return get<ObservationHistory>(`/api/v1/observations?${params.toString()}`);
   },
+  getObservationTrends: (patientId: string) =>
+    get<any>(`/api/v1/observations/trends?patient_id=${encodeURIComponent(patientId)}`),
+  getPatientTimeline: (patientId: string, limit = 50) =>
+    get<any>(`/api/v1/patients/${encodeURIComponent(patientId)}/timeline?limit=${limit}`),
+  getDataQuality: () =>
+    get<any>('/api/v1/observations/quality'),
+
+  // Historical replay ingestion for controlled QA
+  ingestReplayBatch: (items: any[]) =>
+    request<any>('/api/v1/ingestion/batch', {
+      method: 'POST',
+      body: JSON.stringify({
+        batch_id: 'replay-' + Date.now(),
+        source_id: 'qa-replay-tool',
+        source_mode: 'historical_replay',
+        records: items,
+      }),
+    }),
+
   health: () => get<{ status: string; model_version: string; demo_only: boolean }>('/health'),
 };

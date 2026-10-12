@@ -22,7 +22,10 @@ export function isDemoMode(override?: DataSource): boolean {
 // Thin wrappers: try API, fall back to demo on any failure.
 export async function fetchPatients(override?: DataSource) {
   if (isDemoMode(override)) return demoDataService.listPatients();
-  try { return (await api.listPatients()) as ReturnType<typeof demoDataService.listPatients>; }
+  try {
+    const res = await api.listPatients();
+    return res.items as unknown as ReturnType<typeof demoDataService.listPatients>;
+  }
   catch { cachedSource = 'demo'; return demoDataService.listPatients(); }
 }
 export const dataProvider = { fetchPatients, demo: demoDataService, api };

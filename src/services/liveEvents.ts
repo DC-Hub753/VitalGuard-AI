@@ -9,15 +9,30 @@ export interface LiveObservationEvent {
   created_at: string;
   observation: Record<string, number>;
   prediction: { risk_score: number; risk_level: string; model_version?: string };
-  demo_only: true;
+  source_mode?: string;
+  demo_only?: boolean;
 }
 export interface LiveAlertEvent {
-  type: 'alert.created';
-  event_id: number;
-  alert: { id: number; patient_id: string; title: string; severity: string; status: string; created_at: string };
-  demo_only: true;
+  type: 'alert.created' | 'alert.updated';
+  event_id?: number;
+  alert: {
+    id: number;
+    patient_id: string;
+    title: string;
+    severity: string;
+    status: string;
+    created_at: string;
+    alert_type?: string;
+    assigned_to?: string | null;
+    notes?: any[];
+  };
+  demo_only?: boolean;
 }
-export type LiveEvent = LiveObservationEvent | LiveAlertEvent | { type: 'connected' | 'pong'; demo_only?: true };
+export type LiveEvent =
+  | LiveObservationEvent
+  | LiveAlertEvent
+  | { type: 'connected' | 'pong' | 'error' | 'subscribed' | 'unsubscribed'; [key: string]: any };
+
 
 export function createLiveSocket(onEvent: (event: LiveEvent) => void, onStatus: (status: 'connecting' | 'connected' | 'reconnecting' | 'offline') => void) {
   let socket: WebSocket | null = null;

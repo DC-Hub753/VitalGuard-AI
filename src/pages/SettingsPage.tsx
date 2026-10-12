@@ -26,7 +26,7 @@ function Seg<T extends string | number>({ options, value, onPick, label }: { opt
   );
 }
 export function SettingsPage() {
-  const { speed, setSpeed, multiplier, setMultiplier, dataSource, setDataSource, theme, setTheme, running } = useSimulation();
+  const { dataSource, setDataSource, theme, setTheme, connectionState, telemetryMode, triggerReplayBurst } = useSimulation();
   return (
     <Shell title="Settings" subtitle="Workspace configuration">
       <PageHeader eyebrow="Configuration" title="Settings"
@@ -43,12 +43,35 @@ export function SettingsPage() {
           <p className="text-xs text-slate-500 mt-3 flex items-start gap-1.5"><Database size={13} aria-hidden className="mt-0.5 shrink-0" />Local synthetic set or backend API with automatic fallback. API base: <span className="font-mono">{APP_CONFIG.apiBaseUrl}</span></p>
           {dataSource === 'demo' && <div className="mt-3"><BackendOffline onUseDemo={() => setDataSource('demo')} /></div>}
         </SectionCard>
-        <SectionCard eyebrow="Playback" title="Monitoring" hint="Live signal playback" label="Simulation">
-          <p className="eyebrow flex items-center gap-1.5"><MonitorPlay size={13} aria-hidden />Signal speed</p>
-          <div className="mt-2"><Seg options={['slow', 'normal', 'fast'] as const} value={speed} onPick={setSpeed} label="Simulation speed" /></div>
-          <p className="eyebrow mt-4 flex items-center gap-1.5"><Gauge size={13} aria-hidden />Multiplier</p>
-          <div className="mt-2"><Seg options={[1, 2] as const} value={multiplier} onPick={setMultiplier} label="Speed multiplier" /></div>
-          <p className="text-xs text-slate-500 mt-3">Currently <strong>{running ? 'streaming' : 'paused'}</strong> · affects vitals, risk, charts and alerts.</p>
+        <SectionCard eyebrow="Telemetry" title="Telemetry link & testing" hint="Live backend stream & historical QA replay" label="Telemetry">
+          <p className="eyebrow flex items-center gap-1.5"><MonitorPlay size={13} aria-hidden />Telemetry feed status</p>
+          <div className="mt-2 flex items-center gap-2">
+            <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl ${
+              connectionState === 'connected'
+                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                : connectionState === 'reconnecting'
+                ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+            }`}>
+              <span className={`h-2 w-2 rounded-full ${
+                connectionState === 'connected' ? 'bg-emerald-500 animate-pulse' : connectionState === 'reconnecting' ? 'bg-amber-500 animate-spin' : 'bg-rose-500'
+              }`} />
+              Channel: {connectionState.toUpperCase()}
+            </span>
+            <span className="text-xs text-slate-400">Mode: {telemetryMode === 'historical_replay' ? 'Historical Replay' : 'Authoritative Live'}</span>
+          </div>
+
+          <p className="eyebrow mt-4 flex items-center gap-1.5"><Gauge size={13} aria-hidden />Historical replay burst (QA test)</p>
+          <p className="text-xs text-slate-500 mt-1">Injects an authorized synthetic observation burst into the backend pipeline to test real-time WebSocket propagation, NEWS2 re-scoring, and alert generation.</p>
+          <div className="mt-3">
+            <button
+              onClick={() => void triggerReplayBurst('P-SIM-003')}
+              className="btn-secondary !text-xs inline-flex items-center gap-1.5"
+            >
+              <MonitorPlay size={13} />
+              Replay burst for P-SIM-003
+            </button>
+          </div>
         </SectionCard>
         <SectionCard eyebrow="Theme" title="Appearance" hint="Light or dark clinical theme" label="Appearance">
           <div className="flex flex-wrap gap-2" role="group" aria-label="Theme">

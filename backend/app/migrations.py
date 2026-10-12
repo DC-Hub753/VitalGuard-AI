@@ -77,9 +77,11 @@ def migrate(engine: Engine) -> None:
     applied = _applied_versions(engine)
     if 4 not in applied:
         _add_patients_columns(engine)
+        _seed_demo_patients_if_empty(engine)
         _record_version(engine, 4)
     else:
         _add_patients_columns(engine)
+        _seed_demo_patients_if_empty(engine)
 
     # Version 5: establish users table with PBKDF2 password hashes and RBAC roles (admin, clinician, nurse).
     applied = _applied_versions(engine)
@@ -151,6 +153,13 @@ def _seed_demo_users_if_empty(engine: Engine) -> None:
     """Seed initial role accounts if the users table is completely empty."""
     from .user_service import seed_initial_users
     seed_initial_users(engine)
+
+
+def _seed_demo_patients_if_empty(engine: Engine) -> None:
+    """Seed initial patient cohort if the patients table is completely empty."""
+    from .patient_service import seed_initial_patients
+    seed_initial_patients(engine)
+
 
 
 def _add_ingestion_columns(engine: Engine) -> None:
