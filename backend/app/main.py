@@ -178,10 +178,20 @@ async def live_socket(websocket: WebSocket, token: str | None = Query(default=No
 
 @app.get("/api/v1/model/info")
 def model_info(principal: dict = Depends(authenticate_principal)):
-    return {"name": "VitalGuard synthetic risk classifier", "model_version": MODEL_VERSION,
-        "algorithm": "StandardScaler + LogisticRegression",
-        "features": ["age", "heart_rate", "spo2", "systolic_bp", "diastolic_bp", "temperature", "respiratory_rate"],
-        "training_data": "generated synthetic observations only", "demo_only": True, "clinically_validated": False}
+    from .xgboost_pipeline import MODEL_VERSION as XGB_VERSION, PREDICTION_HORIZON, FEATURE_NAMES
+    return {
+        "name": "VitalGuard ML Deterioration & Scoring Suite",
+        "model_version": XGB_VERSION,
+        "legacy_model_version": MODEL_VERSION,
+        "algorithm": "XGBoost (HistGradientBoosting) + TreeSHAP",
+        "prediction_horizon": PREDICTION_HORIZON,
+        "features": FEATURE_NAMES,
+        "clinical_scoring": "Royal College of Physicians NEWS2 (2017)",
+        "training_data": "generated synthetic observations only",
+        "benchmark_dataset": "multi-patient sequential benchmark episodes with patient-level group split",
+        "demo_only": True,
+        "clinically_validated": False,
+    }
 
 @app.post("/api/v1/scores/news2")
 def calculate_news2(payload: NEWS2Input, principal: dict = Depends(require_permission(PERM_NEWS2_CALCULATE))):
@@ -190,7 +200,12 @@ def calculate_news2(payload: NEWS2Input, principal: dict = Depends(require_permi
 
 @app.get("/api/v1/model/evaluation")
 def model_evaluation(principal: dict = Depends(authenticate_principal)):
-    return evaluate_synthetic_holdout()
+    from .xgboost_pipeline import xgb_pipeline
+    holdout = evaluate_synthetic_holdout()
+    return {
+        "xgboost_pipeline": xgb_pipeline.evaluation_metrics,
+        "baseline_holdout": holdout,
+    }
 
 @app.get("/api/v1/model/validation-diagnostics")
 def model_validation_diagnostics(principal: dict = Depends(authenticate_principal)):
@@ -213,16 +228,31 @@ async def predict(payload: VitalInput, principal: dict = Depends(require_permiss
         await hub.broadcast({"type": "alert.created", "event_id": alert["id"], "alert": alert, "demo_only": True})
     return response
 
+@app.post("/api/v1/risk/assessment")
+def comprehensive_assessment(payload: VitalInput, principal: dict = Depends(require_permission(PERM_RISK_PREDICT))):
+    """Integrated clinical assessment separating NEWS2, XGBoost 6h horizon prediction, and TreeSHAP."""
+    from .risk_assessment_service import compute_comprehensive_assessment
+    values = payload.model_dump(exclude={"patient_id"})
+    return compute_comprehensive_assessment(payload.patient_id, values)
+
 @app.post("/api/v1/risk/explain")
 def explain_risk(payload: VitalInput, principal: dict = Depends(require_permission(PERM_RISK_EXPLAIN))):
+    from .shap_explainer import shap_service
+    from .temporal_features import build_full_feature_vector
     values = payload.model_dump(exclude={"patient_id"})
-    return {"patient_id": payload.patient_id, "model_version": MODEL_VERSION,
+    features = build_full_feature_vector(values)
+    shap_res = shap_service.explain(features)
+    return {
+        "patient_id": payload.patient_id,
+        "model_version": MODEL_VERSION,
         "risk_score": round(predict_probability(values) * 100),
         "contributions": coefficient_contributions(values),
-        "method": "standardized logistic-regression coefficient contributions",
+        "shap_explanation": shap_res,
+        "method": "standardized logistic-regression coefficient contributions & TreeSHAP",
         "caveat": "These are model contributions, not causal explanations or clinical guidance.",
         "reconstruction_check": validate_additive_explanation(values),
-        "demo_only": True}
+        "demo_only": True,
+    }
 
 @app.get("/api/v1/observations")
 def observation_history(patient_id: str | None = Query(default=None, min_length=1, max_length=64),

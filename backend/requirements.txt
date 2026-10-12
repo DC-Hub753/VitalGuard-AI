@@ -7,3 +7,6 @@ httpx==0.28.1
 SQLAlchemy==2.1.4
 psycopg[binary]==3.3.6
 itsdangerous==2.2.0
+xgboost>=3.0.0
+shap>=0.50.0
+
