@@ -6,7 +6,7 @@ a lightweight SQLAlchemy migration runner; a managed PostgreSQL service and
 backup/restore drill are separate release requirements.
 """
 
-from sqlalchemy import Column, DateTime, Integer, MetaData, Table, func, insert, select, text
+from sqlalchemy import Column, DateTime, Integer, MetaData, Table, func, insert, inspect, select, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.engine import Engine
 
@@ -140,13 +140,15 @@ def _add_patients_columns(engine: Engine) -> None:
             except OperationalError:
                 # SQLite: column already exists from a previous run or create_all.
                 pass
-        # Migrate data from the old 'unit' column to 'ward' if 'unit' still exists.
-        try:
+    # Migrate data from the legacy 'unit' column only when it exists.
+    # Fresh/current schemas have 'ward' but no 'unit'; attempting the UPDATE
+    # unconditionally raises ProgrammingError on PostgreSQL and aborts startup.
+    patient_columns = {column["name"] for column in inspect(engine).get_columns("patients")}
+    if "unit" in patient_columns:
+        with engine.begin() as connection:
             connection.execute(text(
                 "UPDATE patients SET ward = unit WHERE ward = 'General Ward' AND unit IS NOT NULL AND unit != 'Demo Ward'"
             ))
-        except OperationalError:
-            pass
 
 
 def _seed_demo_users_if_empty(engine: Engine) -> None:
