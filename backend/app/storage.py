@@ -94,7 +94,10 @@ def list_observations(patient_id: str | None = None, limit: int = 50, before_id:
         _ensure_schema(engine)
         query = select(_OBSERVATIONS)
         if patient_id is not None:
-            query = query.where(_OBSERVATIONS.c.patient_id == patient_id)
+            clean_pid = patient_id.strip()
+            if clean_pid:
+                # Case-insensitive substring/prefix match for clinician usability
+                query = query.where(_OBSERVATIONS.c.patient_id.ilike(f"%{clean_pid}%"))
         if before_id is not None:
             query = query.where(_OBSERVATIONS.c.id < before_id)
         query = query.order_by(_OBSERVATIONS.c.id.desc()).limit(limit)
