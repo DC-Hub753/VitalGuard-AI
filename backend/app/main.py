@@ -52,7 +52,7 @@ app.include_router(patient_router)
 _default_origins = ["http://localhost:5173", "http://127.0.0.1:5173", "https://vitalguard-ai-g215.onrender.com"]
 _origins = os.getenv("CORS_ORIGINS", ",".join(_default_origins))
 app.add_middleware(CORSMiddleware, allow_origins=[origin.strip() for origin in _origins.split(",") if origin.strip()],
-    allow_credentials=False, allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["Content-Type", "Authorization"])
+    allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 # Process-local operational counters. Never store query strings, patient IDs, or request bodies.
 _metrics_lock = threading.Lock()
