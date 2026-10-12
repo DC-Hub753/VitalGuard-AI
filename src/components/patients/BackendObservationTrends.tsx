@@ -41,12 +41,9 @@ export function BackendObservationTrends({ patientId }: { patientId: string }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ patient_id: patientId, limit: '50' });
-      const response = await fetch(`${APP_CONFIG.apiBaseUrl}/api/v1/observations/trends?${params}`, {
-        signal: AbortSignal.timeout(8000),
-      });
-      if (!response.ok) throw new Error(`Trend API returned ${response.status}`);
-      setData(await response.json() as TrendResponse);
+      const { api } = await import('../../services/api.ts');
+      const res = await api.getObservationTrends(patientId);
+      setData(res as unknown as TrendResponse);
       setError('');
     } catch {
       setError('Persisted trend analytics are unavailable. Confirm the latest backend deployment is live.');

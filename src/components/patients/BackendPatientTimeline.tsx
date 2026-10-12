@@ -39,11 +39,9 @@ export function BackendPatientTimeline({ patientId }: { patientId: string }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${APP_CONFIG.apiBaseUrl}/api/v1/patients/${encodeURIComponent(patientId)}/timeline?limit=30`, {
-        signal: AbortSignal.timeout(8000),
-      });
-      if (!response.ok) throw new Error(`Timeline API returned ${response.status}`);
-      setTimeline(await response.json() as TimelineResponse);
+      const { api } = await import('../../services/api.ts');
+      const res = await api.getPatientTimeline(patientId);
+      setTimeline(res as unknown as TimelineResponse);
       setError('');
     } catch {
       setError('Persisted backend timeline is unavailable. Confirm the latest backend deployment is live.');
