@@ -23,7 +23,7 @@ MIGRATIONS = Table(
 
 # Keep migration definitions immutable after release. Each step should be
 # safe to re-run after an interrupted startup.
-LATEST_VERSION = 6
+LATEST_VERSION = 7
 
 
 
@@ -99,6 +99,14 @@ def migrate(engine: Engine) -> None:
     else:
         _add_ingestion_columns(engine)
 
+    # Version 7: add assigned_to, alert_type, reopened, and notes to alerts table.
+    applied = _applied_versions(engine)
+    if 7 not in applied:
+        _add_alerts_columns(engine)
+        _record_version(engine, 7)
+    else:
+        _add_alerts_columns(engine)
+
     applied = _applied_versions(engine)
     expected = set(range(1, LATEST_VERSION + 1))
     if not expected.issubset(applied):
@@ -164,4 +172,31 @@ def _add_ingestion_columns(engine: Engine) -> None:
             connection.execute(text("CREATE INDEX IF NOT EXISTS idx_ingestion_source_mode ON ingestion_records (source_mode)"))
         except OperationalError:
             pass
+
+
+def _add_alerts_columns(engine: Engine) -> None:
+    """Idempotently add Phase-5 columns to alerts table."""
+    is_postgresql = engine.dialect.name == "postgresql"
+    tz_type = "TIMESTAMP WITH TIME ZONE" if is_postgresql else "DATETIME"
+    columns = [
+        "ALTER TABLE alerts ADD COLUMN assigned_to VARCHAR(120)",
+        f"ALTER TABLE alerts ADD COLUMN assigned_at {tz_type}",
+        "ALTER TABLE alerts ADD COLUMN alert_type VARCHAR(32) NOT NULL DEFAULT 'clinical_rule'",
+        f"ALTER TABLE alerts ADD COLUMN reopened_at {tz_type}",
+        "ALTER TABLE alerts ADD COLUMN reopened_by VARCHAR(120)",
+        "ALTER TABLE alerts ADD COLUMN notes_json TEXT NOT NULL DEFAULT '[]'",
+    ]
+    with engine.begin() as connection:
+        for ddl in columns:
+            if is_postgresql:
+                ddl = ddl.replace("ADD COLUMN ", "ADD COLUMN IF NOT EXISTS ", 1)
+            try:
+                connection.execute(text(ddl))
+            except OperationalError:
+                pass
+        try:
+            connection.execute(text("CREATE INDEX IF NOT EXISTS idx_alerts_type_status ON alerts (alert_type, status)"))
+        except OperationalError:
+            pass
+
 

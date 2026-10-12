@@ -32,8 +32,15 @@ alerts = Table(
     Column("acknowledged_by", String(120)),
     Column("acknowledged_at", DateTime(timezone=True)),
     Column("resolved_at", DateTime(timezone=True)),
+    Column("assigned_to", String(120)),
+    Column("assigned_at", DateTime(timezone=True)),
+    Column("alert_type", String(32), nullable=False, server_default="clinical_rule"),
+    Column("reopened_at", DateTime(timezone=True)),
+    Column("reopened_by", String(120)),
+    Column("notes_json", Text, nullable=False, server_default="[]"),
 )
 Index("idx_alerts_status_created", alerts.c.status, alerts.c.created_at.desc())
+Index("idx_alerts_type_status", alerts.c.alert_type, alerts.c.status)
 
 audit_events = Table(
     "audit_events", metadata,
