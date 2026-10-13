@@ -27,6 +27,9 @@ class LiveEventHub:
             raise ValueError("send_timeout_seconds must be positive")
         self._clients: set[WebSocket] = set()
         self._client_patients: dict[WebSocket, set[str]] = {}  # socket -> set of subscribed patient_ids
+        # New connections receive all events until they explicitly configure subscriptions.
+        # Once configured, an empty set means no patient-scoped events, not "all".
+        self._client_filtering_enabled: set[WebSocket] = set()
         self._lock = asyncio.Lock()
         self._send_timeout_seconds = send_timeout_seconds
 
@@ -34,7 +37,7 @@ class LiveEventHub:
         await websocket.accept(subprotocol=subprotocol)
         async with self._lock:
             self._clients.add(websocket)
-            self._client_patients[websocket] = set()  # initially empty or defaults to all if empty
+            self._client_patients[websocket] = set()  # unfiltered until first subscribe/unsubscribe action
         await websocket.send_json({
             "type": "connected",
             "event_id": str(uuid.uuid4()),
@@ -48,10 +51,12 @@ class LiveEventHub:
         async with self._lock:
             self._clients.discard(websocket)
             self._client_patients.pop(websocket, None)
+            self._client_filtering_enabled.discard(websocket)
 
     async def subscribe_patient(self, websocket: WebSocket, patient_id: str) -> None:
         async with self._lock:
             if websocket in self._client_patients:
+                self._client_filtering_enabled.add(websocket)
                 self._client_patients[websocket].add(patient_id)
         await websocket.send_json({
             "type": "subscription.confirmed",
@@ -63,6 +68,7 @@ class LiveEventHub:
     async def unsubscribe_patient(self, websocket: WebSocket, patient_id: str) -> None:
         async with self._lock:
             if websocket in self._client_patients:
+                self._client_filtering_enabled.add(websocket)
                 self._client_patients[websocket].discard(patient_id)
         await websocket.send_json({
             "type": "subscription.confirmed",
@@ -78,19 +84,25 @@ class LiveEventHub:
     async def broadcast(self, event: dict[str, Any]) -> None:
         """Broadcast an event to authorized subscribers.
 
-        If client has specific patient subscriptions, only forward events matching
-        those patients. If the client has no patient filters specified, forward all.
+        New connections receive all events until they send a subscribe/unsubscribe
+        action. After that, only events with a matching patient_id are forwarded.
+        Events without patient_id are never sent to a filtered client.
         """
         patient_id = event.get("patient_id")
         async with self._lock:
             clients = list(self._clients)
             client_filters = dict(self._client_patients)
+            filtering_enabled = set(self._client_filtering_enabled)
 
         stale: list[WebSocket] = []
         for client in clients:
             subscribed_patients = client_filters.get(client, set())
-            # Forward if no filters (subscribed to all) or patient matches
-            if not subscribed_patients or patient_id is None or patient_id in subscribed_patients:
+            is_filtered = client in filtering_enabled
+            should_send = (
+                not is_filtered
+                or (patient_id is not None and patient_id in subscribed_patients)
+            )
+            if should_send:
                 try:
                     await asyncio.wait_for(
                         client.send_json(event), timeout=self._send_timeout_seconds
