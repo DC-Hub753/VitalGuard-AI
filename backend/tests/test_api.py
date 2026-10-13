@@ -213,3 +213,16 @@ def test_alert_audit_actor_comes_from_authenticated_identity(client):
     # Route authorization is exercised by the shared authenticated client.
     response = client.get("/api/v1/alerts")
     assert response.status_code == 200
+
+
+def test_auth_signing_fails_closed_without_configured_secret(monkeypatch):
+    from fastapi import HTTPException
+    from app.auth import _secret
+
+    monkeypatch.delenv("VITALGUARD_AUTH_SECRET", raising=False)
+
+    with pytest.raises(HTTPException) as error:
+        _secret()
+
+    assert error.value.status_code == 503
+    assert error.value.detail == "Authentication signing secret is not configured"

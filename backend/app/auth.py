@@ -43,9 +43,13 @@ def _check_rate_limit(client_ip: str) -> None:
 
 
 def _secret() -> str:
+    """Return the configured signing secret; never fall back to a known production key."""
     secret = os.getenv("VITALGUARD_AUTH_SECRET", "")
     if len(secret) < 32:
-        return "development-synthetic-secret-key-32-chars-minimum"
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication signing secret is not configured",
+        )
     return secret
 
 

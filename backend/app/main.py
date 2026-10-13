@@ -49,7 +49,12 @@ app.include_router(alert_router)
 app.include_router(timeline_router)
 app.include_router(trend_router)
 app.include_router(patient_router)
-_default_origins = ["http://localhost:5173", "http://127.0.0.1:5173", "https://vitalguard-ai-g215.onrender.com"]
+_default_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://vitalguard-ai-dc.onrender.com",
+    "https://vitalguard-ai-g215.onrender.com",  # legacy demo origin
+]
 _origins = os.getenv("CORS_ORIGINS", ",".join(_default_origins))
 app.add_middleware(CORSMiddleware, allow_origins=[origin.strip() for origin in _origins.split(",") if origin.strip()],
     allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
