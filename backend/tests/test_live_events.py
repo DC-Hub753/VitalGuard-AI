@@ -12,7 +12,7 @@ def client(tmp_path, monkeypatch):
 
 def test_websocket_receives_observation_only_after_ingestion(client):
     token = client.headers["Authorization"].split(" ", 1)[1]
-    with client.websocket_connect(f"/api/v1/live?token={token}") as websocket:
+    with client.websocket_connect("/api/v1/live", subprotocols=["vitalguard-live", f"vg-token.{token}"]) as websocket:
         connected = websocket.receive_json()
         assert connected["type"] == "connected"
         response = client.post("/api/v1/demo/observations",
@@ -26,7 +26,14 @@ def test_websocket_receives_observation_only_after_ingestion(client):
 
 def test_websocket_heartbeat(client):
     token = client.headers["Authorization"].split(" ", 1)[1]
-    with client.websocket_connect(f"/api/v1/live?token={token}") as websocket:
+    with client.websocket_connect("/api/v1/live", subprotocols=["vitalguard-live", f"vg-token.{token}"]) as websocket:
         assert websocket.receive_json()["type"] == "connected"
         websocket.send_text("ping")
         assert websocket.receive_json()["type"] == "pong"
+
+
+def test_websocket_rejects_query_string_token(client):
+    token = client.headers["Authorization"].split(" ", 1)[1]
+    with pytest.raises(Exception):
+        with client.websocket_connect(f"/api/v1/live?token={token}") as websocket:
+            websocket.receive_json()
