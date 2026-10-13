@@ -54,3 +54,28 @@ def test_failed_client_is_removed_and_other_clients_receive_event():
         assert healthy.events == [{"type": "alert.created"}]
 
     asyncio.run(scenario())
+
+
+
+def test_patient_filtered_client_receives_only_matching_events():
+    async def scenario():
+        hub = LiveEventHub()
+        filtered = FakeSocket()
+        unfiltered = FakeSocket()
+        hub._clients.update({filtered, unfiltered})
+        hub._client_patients[filtered] = {"DEMO-001"}
+        hub._client_patients[unfiltered] = set()
+
+        events = [
+            {"type": "observation.created", "patient_id": "DEMO-002"},
+            {"type": "alert.created"},
+            {"type": "observation.created", "patient_id": None},
+            {"type": "observation.created", "patient_id": "DEMO-001"},
+        ]
+        for event in events:
+            await hub.broadcast(event)
+
+        assert filtered.events == [events[-1]]
+        assert unfiltered.events == events
+
+    asyncio.run(scenario())
