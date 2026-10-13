@@ -167,4 +167,4 @@ The repository has two phase histories: the legacy feature roadmap below documen
 - [Legacy demo feature roadmap](docs/REALTIME_DEMO_ROADMAP.md) — delivered prototype capabilities and limitations.
 - [Render release runbook](docs/RENDER_RELEASE_RUNBOOK.md) — service branches and deployment verification.
 
-Current delivery phase: Phase 2 architecture/API/data-model baseline documented. Hosted PostgreSQL configuration, authentication/authorization, live end-to-end verification and clinical validation remain outstanding.
+Current delivery phase: Phase 5 database migrations are in progress. Authentication/authorization code and schema migrations are present, but hosted database durability/backup-restore evidence and live end-to-end verification remain outstanding. The current Render demo URLs are [frontend](https://vitalguard-ai-dc.onrender.com) and [backend API](https://vitalguard-risk-api-dc.onrender.com/docs).
