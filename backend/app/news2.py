@@ -129,7 +129,7 @@ def score_consciousness(consciousness: str | None) -> int | None:
     # Voice (V), Pain (P), Unresponsive (U), or New Confusion (C)
     if norm in ("voice", "v", "pain", "p", "unresponsive", "u", "new_confusion", "confusion", "c"):
         return 3
-    return 3
+    return None
 
 
 def score_temperature(temp: float | int | None) -> int | None:
@@ -159,6 +159,8 @@ def score_news2(values: dict[str, Any]) -> dict[str, Any]:
     Handles complete panels and explicit missing inputs without treating missing values as normal.
     """
     scale = int(values.get("spo2_scale", 1))
+    if scale not in (1, 2):
+        raise ValueError("spo2_scale must be 1 or 2")
     oxygen = values.get("supplemental_oxygen")
 
     rr = values.get("respiratory_rate")
@@ -217,7 +219,7 @@ def score_news2(values: dict[str, Any]) -> dict[str, Any]:
         "score_name": "NEWS2",
         "score_version": "Royal College of Physicians NEWS2 (2017)",
         "parameter_scores": param_scores,
-        "total_score": total_score if total_score is not None else partial_score,
+        "total_score": total_score,
         "is_complete": is_complete,
         "missing_parameters": missing,
         "partial_score": partial_score,
