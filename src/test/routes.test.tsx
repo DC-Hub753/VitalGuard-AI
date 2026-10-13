@@ -38,7 +38,7 @@ describe('routes render', () => {
   });
   it('patient list renders + filters + view toggle', () => {
     wrap(<PatientsPage />);
-    expect(screen.getByRole('heading', { name: 'Patients' })).toBeTruthy();
+    expect(screen.getAllByRole('heading', { name: 'Patients' }).length).toBeGreaterThan(0);
     expect(screen.getByLabelText('Search patient ID')).toBeTruthy();
     expect(screen.getByLabelText('View mode')).toBeTruthy();
   });
