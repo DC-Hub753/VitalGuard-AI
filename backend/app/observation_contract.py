@@ -26,7 +26,7 @@ class ObservationUnits(BaseModel):
 
 
 class VitalsMeasurements(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
 
     heart_rate: float = Field(ge=10.0, le=300.0, description="Heart rate in bpm")
     spo2: float = Field(ge=40.0, le=100.0, description="Oxygen saturation in percent")
