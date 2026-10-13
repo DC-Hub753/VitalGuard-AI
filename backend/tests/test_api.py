@@ -226,3 +226,33 @@ def test_auth_signing_fails_closed_without_configured_secret(monkeypatch):
 
     assert error.value.status_code == 503
     assert error.value.detail == "Authentication signing secret is not configured"
+
+
+def test_disabled_database_user_cannot_fall_back_to_bootstrap_operator(client, monkeypatch):
+    from app.user_service import create_user, update_user_status
+
+    monkeypatch.setenv("VITALGUARD_AUTH_USERNAME", "demo-operator")
+    monkeypatch.setenv("VITALGUARD_AUTH_PASSWORD", "a-long-demo-password")
+    monkeypatch.setenv("VITALGUARD_AUTH_SECRET", "test-only-secret-that-is-at-least-32-chars")
+
+    user = create_user(
+        username="demo-operator",
+        password="a-long-demo-password",
+        role="nurse",
+        full_name="Demo Operator",
+    )
+    login = client.post("/api/v1/auth/login", json={
+        "username": "demo-operator", "password": "a-long-demo-password"
+    })
+    assert login.status_code == 200
+    update_user_status(user["id"], active=False)
+
+    identity = client.get("/api/v1/auth/me", headers={
+        "Authorization": f"Bearer {login.json()['access_token']}"
+    })
+    assert identity.status_code == 401
+
+    disabled_login = client.post("/api/v1/auth/login", json={
+        "username": "demo-operator", "password": "a-long-demo-password"
+    })
+    assert disabled_login.status_code == 401
