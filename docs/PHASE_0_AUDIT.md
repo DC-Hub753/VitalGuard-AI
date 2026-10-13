@@ -6,17 +6,18 @@
 
 ## 1. Repository and deployment baseline
 
-- Repository: https://github.com/parthiv-doraswamy/VitalGuard-AI
-- Frontend: https://vitalguard-ai-g215.onrender.com
-  - Render service ID: `srv-db56ekijnfac739dg5d0`
+- Repository: https://github.com/DC-Hub753/VitalGuard-AI
+- Frontend: https://vitalguard-ai-dc.onrender.com
+  - Render service ID: `srv-db6cit7lk1mc73copa10`
   - Branch: `main`
   - Build: `npm ci && npm run build`
   - Publish directory: `dist`
-- Backend: https://vitalguard-risk-api.onrender.com
-  - Render service ID: `srv-db56gvm7bikc7394de0g`
-  - Branch: `phase-3-risk-engine`
-  - Build: `pip install -r backend/requirements.txt`
-  - Start: `uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port $PORT`
+- Backend: https://vitalguard-risk-api-dc.onrender.com
+  - Render service ID: `srv-db6c105ckfvc73ctrelg`
+  - Branch: `main`
+  - Root directory: `backend/`
+  - Build: `pip install -r requirements.txt`
+  - Start: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 - Both Render services have auto-deploy enabled.
 - Render event history confirms the latest recorded frontend deployment succeeded on 2026-10-10 at 18:52:16 UTC and the latest recorded backend deployment succeeded on 2026-10-10 at 18:51:14 UTC.
 - Latest recorded frontend commit: `a5ce38a8741a0dee1f0d12c33766e0ffc909d697`.
@@ -102,3 +103,14 @@ These features are prototype capabilities. Their presence in source or successfu
 ## Safety boundary
 
 VitalGuard AI remains a synthetic-data software prototype. Do not enter real patient information, use the current model for diagnosis/triage/treatment, or represent a demo score as a clinically validated probability. Production engineering and successful deployment are necessary but not sufficient for clinical use.
+
+
+## Follow-up correction — own Render deployment (2026-10-13)
+
+The original audit above captured a previous repository/deployment snapshot. The active deployment for this repository is now:
+- Repository: https://github.com/DC-Hub753/VitalGuard-AI
+- Frontend: https://vitalguard-ai-dc.onrender.com (service `srv-db6cit7lk1mc73copa10`, branch `main`, auto-deploy enabled).
+- Backend: https://vitalguard-risk-api-dc.onrender.com (service `srv-db6c105ckfvc73ctrelg`, root directory `backend/`, branch `main`, auto-deploy enabled).
+- Latest observed live commit at the start of Chunk 01: `87c1fc636f639aded1c3a304d1e35a1b48bfc4d7` (Render reported both services live for this commit).
+
+The audit's earlier security and deployment statements should be read as historical observations, not current-state confirmation. This follow-up adds a fail-closed signing-secret check and the current frontend origin to the backend's default CORS allowlist. Deployment and live browser-to-API verification are still required before calling these fixes complete.
