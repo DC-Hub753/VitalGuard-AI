@@ -1,4 +1,4 @@
-"""Authenticated, authorized real-time WebSocket hub with client filtering and event recovery."""
+""""Authenticated, authorized real-time WebSocket hub with client filtering and event recovery."""
 from __future__ import annotations
 
 import asyncio
@@ -70,6 +70,10 @@ class LiveEventHub:
             "status": "unsubscribed",
             "timestamp": datetime.now(timezone.utc).isoformat(),
         })
+
+    @staticmethod
+    def _valid_patient_id(value: Any) -> bool:
+        return isinstance(value, str) and bool(value.strip()) and len(value) <= 64
 
     async def broadcast(self, event: dict[str, Any]) -> None:
         """Broadcast an event to authorized subscribers.
@@ -168,19 +172,24 @@ class LiveEventHub:
                 except json.JSONDecodeError:
                     await websocket.send_json({"type": "error", "message": "Invalid JSON payload"})
                     continue
+                if not isinstance(msg, dict):
+                    await websocket.send_json({"type": "error", "message": "JSON payload must be an object"})
+                    continue
 
                 action = msg.get("action")
                 if action == "ping":
                     await websocket.send_json({"type": "pong", "timestamp": datetime.now(timezone.utc).isoformat()})
-                elif action == "subscribe":
+                elif action in ("subscribe", "unsubscribe"):
                     pid = msg.get("patient_id")
-                    if pid:
+                    if not self._valid_patient_id(pid):
+                        await websocket.send_json({
+                            "type": "error",
+                            "message": "patient_id must be a non-empty string of at most 64 characters",
+                        })
+                        continue
+                    if action == "subscribe":
                         await self.subscribe_patient(websocket, pid)
                     else:
-                        await websocket.send_json({"type": "error", "message": "Missing patient_id in subscribe"})
-                elif action == "unsubscribe":
-                    pid = msg.get("patient_id")
-                    if pid:
                         await self.unsubscribe_patient(websocket, pid)
                 elif action == "replay":
                     await self.handle_replay_request(websocket, msg)
