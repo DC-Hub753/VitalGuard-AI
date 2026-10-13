@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import math
 from typing import Any
 
 METRICS = {
@@ -25,15 +26,31 @@ def _timestamp(value: Any) -> datetime | None:
 
 
 def summarize_observation_trends(patient_id: str, records: list[dict[str, Any]]) -> dict[str, Any]:
-    ordered = sorted(records, key=lambda item: int(item.get("id", 0)))
+    # Prefer observed timestamps for chronology; fall back to record IDs when a
+    # timestamp is absent or malformed. Stable sorting preserves deterministic output.
+    def chronology(record: dict[str, Any]) -> tuple[int, float, int]:
+        timestamp = _timestamp(record.get("created_at"))
+        return (
+            0 if timestamp is not None else 1,
+            timestamp.timestamp() if timestamp is not None else float(record.get("id", 0)),
+            int(record.get("id", 0)),
+        )
+
+    ordered = sorted(records, key=chronology)
     metric_values: dict[str, list[float]] = {name: [] for name in METRICS}
     for record in ordered:
         inputs = record.get("inputs") or {}
         prediction = record.get("prediction") or {}
         for name in METRICS:
             value = prediction.get("risk_score") if name == "risk_score" else inputs.get(name)
-            if value is not None:
-                metric_values[name].append(float(value))
+            if value is None or isinstance(value, bool):
+                continue
+            try:
+                numeric_value = float(value)
+            except (TypeError, ValueError, OverflowError):
+                continue
+            if math.isfinite(numeric_value):
+                metric_values[name].append(numeric_value)
 
     trends = []
     for name, threshold in METRICS.items():
