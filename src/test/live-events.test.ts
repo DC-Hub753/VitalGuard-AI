@@ -62,7 +62,7 @@ describe('createLiveSocket reliability', () => {
     const first = FakeWebSocket.instances[0];
     first.open();
     first.close();
-    expect(statuses.at(-1)).toBe('reconnecting');
+    expect(statuses[statuses.length - 1]).toBe('reconnecting');
 
     vi.advanceTimersByTime(1000);
     const second = FakeWebSocket.instances[1];
