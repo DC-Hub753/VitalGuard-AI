@@ -27,7 +27,8 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Install Playwright for CI
-        run: npm install --no-save --package-lock=false @playwright/test@1.56.1
+        timeout-minutes: 4
+        run: npm install --no-save --package-lock=false --no-audit --no-fund --fetch-timeout=60000 --fetch-retries=1 @playwright/test@1.56.1
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - run: npm run build
@@ -46,10 +47,11 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Install Playwright for CI
-        run: npm install --no-save --package-lock=false @playwright/test@1.56.1
+        timeout-minutes: 4
+        run: npm install --no-save --package-lock=false --no-audit --no-fund --fetch-timeout=60000 --fetch-retries=1 @playwright/test@1.56.1
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Verify deployed frontend routes and refreshes
         env:
-          E2E_BASE_URL: https://vitalguard-ai-g215.onrender.com
+          E2E_BASE_URL: https://vitalguard-ai-dc.onrender.com
         run: npx playwright test
