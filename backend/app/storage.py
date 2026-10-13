@@ -60,12 +60,26 @@ def initialize_storage() -> None:
 
 
 def database_health() -> dict[str, str]:
+    """Verify connectivity and that the versioned schema is fully applied.
+
+    This is intentionally read-only: health checks must not create tables or
+    silently repair a partially migrated database.
+    """
+    from .migrations import LATEST_VERSION, MIGRATIONS
+
     engine = _engine()
     try:
-        _ensure_schema(engine)
         with engine.connect() as connection:
             connection.execute(text("SELECT 1"))
-        return {"status": "ok", "backend": "postgresql" if engine.dialect.name == "postgresql" else "sqlite"}
+            applied_versions = set(connection.execute(select(MIGRATIONS.c.version)).scalars())
+        expected_versions = set(range(1, LATEST_VERSION + 1))
+        if not expected_versions.issubset(applied_versions):
+            raise RuntimeError("Database schema migrations are incomplete")
+        return {
+            "status": "ok",
+            "backend": "postgresql" if engine.dialect.name == "postgresql" else "sqlite",
+            "schema_version": str(max(applied_versions)),
+        }
     finally:
         engine.dispose()
 
