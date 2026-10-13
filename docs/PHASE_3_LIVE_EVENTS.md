@@ -24,6 +24,8 @@ After a demo observation is saved successfully, connected clients receive:
 
 The actual observation and prediction fields contain the full validated payload returned by the API. Client may send the text `ping` and receives a JSON `pong`.
 
+Subscription messages must provide a non-empty string `patient_id` of at most 64 characters. Invalid subscription and unsubscription messages return an error envelope and leave the socket available for subsequent valid messages. Structured JSON messages must be objects.
+
 ## Recovery contract
 
 WebSocket is a best-effort live notification channel, not the source of truth. Persist first, then broadcast. If a client disconnects, it must reconnect with exponential backoff and call `GET /api/v1/observations?limit=100` to reconcile persisted records. Use observation IDs as event cursors and deduplicate by ID.
