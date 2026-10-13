@@ -7,6 +7,7 @@ source_mode='authorized_feed'.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import hmac
 from typing import Any
 
 from ..observation_contract import CanonicalObservation, ObservationUnits, VitalsMeasurements
@@ -29,9 +30,12 @@ class AuthorizedFeedAdapter(BaseSourceAdapter):
         return "authorized_feed"
 
     def transform(self, raw_data: dict[str, Any]) -> CanonicalObservation:
-        # Require feed authentication signature/key
+        # Fail closed until a per-feed secret is configured. Compare credentials
+        # in constant time and never accept a caller-supplied key as its own trust root.
         auth_header = raw_data.get("feed_auth_key")
-        if not auth_header or (self._feed_key and auth_header != self._feed_key):
+        if not self._feed_key or not auth_header or not hmac.compare_digest(
+            str(auth_header), self._feed_key
+        ):
             raise PermissionError("Unauthorized external device feed: missing or invalid feed credentials")
 
         observed_at = raw_data["observed_at"]
