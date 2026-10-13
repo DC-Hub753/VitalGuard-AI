@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Clock3, RefreshCw, ShieldAlert } from 'lucide-react';
 import { APP_CONFIG } from '../../services/config.ts';
-import { authorizedFetch } from '../../services/authenticatedFetch.ts';
+import { authorizedFetch, getOperatorAccessToken } from '../../services/authenticatedFetch.ts';
 
 type QualityItem = {
   patient_id: string;
@@ -32,6 +32,11 @@ export function DataQualityPanel() {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
+    if (!getOperatorAccessToken()) {
+      setError('Your operator session is missing or expired. Sign in again to load backend data.');
+      setLoading(false);
+      return;
+    }
     try {
       const response = await authorizedFetch(`${APP_CONFIG.apiBaseUrl}/api/v1/observations/quality?stale_after_seconds=300&limit=100`, {
         signal: AbortSignal.timeout(8000),
