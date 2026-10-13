@@ -14,7 +14,7 @@ async function signIn(page) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ access_token: 'e2e-test-token', token_type: 'bearer', expires_in: 900 }),
+      body: JSON.stringify({ access_token: 'e2e-test-token', token_type: 'bearer', expires_in: 900, username: 'e2e-operator', role: 'admin', full_name: 'E2E Operator' }),
     });
   });
   await page.goto('/#/login');
