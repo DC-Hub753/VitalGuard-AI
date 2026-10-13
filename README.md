@@ -58,6 +58,9 @@ Copy `.env.example` to `.env` for local development. Vite variables prefixed wit
 | `DATABASE_URL` | Optional backend database URL; SQLite is used by default. |
 | `VITALGUARD_DB_PATH` | Optional local SQLite file path for tests/development. |
 | `CORS_ORIGINS` | Comma-separated allowed frontend origins. |
+| `VITALGUARD_AUTH_SECRET` | **Backend only.** Required signing secret, at least 32 characters; generate a unique random value and store only in Render's private environment. |
+| `VITALGUARD_AUTH_USERNAME` | **Backend only.** Bootstrap operator username. |
+| `VITALGUARD_AUTH_PASSWORD` | **Backend only.** Bootstrap operator password. |
 
 ## Current implementation
 
@@ -140,7 +143,7 @@ docs/
 ## Database configuration
 
 - Local development defaults to SQLite.
-- Hosted deployments can set `DATABASE_URL` to a PostgreSQL connection string. The adapter normalizes common `postgres://` and `postgresql://` URLs to psycopg 3.
+- Hosted deployments can set `DATABASE_URL` to a PostgreSQL connection string. The adapter normalizes common `postgres://` and `postgresql://` URLs to psycopg 3. The live Render API currently defaults to SQLite unless a private `DATABASE_URL` is configured.
 - Configure credentials only in the backend service's private environment settings; do not commit them.
 - Provision the hosted database separately. Existing SQLite records are not automatically migrated.
 - This storage adapter currently supports synthetic demonstration data only; it is not a production patient-record system.
@@ -167,4 +170,4 @@ The repository has two phase histories: the legacy feature roadmap below documen
 - [Legacy demo feature roadmap](docs/REALTIME_DEMO_ROADMAP.md) — delivered prototype capabilities and limitations.
 - [Render release runbook](docs/RENDER_RELEASE_RUNBOOK.md) — service branches and deployment verification.
 
-Current delivery phase: Phase 5 database migrations are in progress. Authentication/authorization code and schema migrations are present, but hosted database durability/backup-restore evidence and live end-to-end verification remain outstanding. The current Render demo URLs are [frontend](https://vitalguard-ai-dc.onrender.com) and [backend API](https://vitalguard-risk-api-dc.onrender.com/docs).
+Current delivery phase: Phase 5 database migrations are in progress. Authentication/authorization code and schema migrations are present, but hosted database durability/backup-restore evidence and live end-to-end verification remain outstanding. The current Render demo URLs are [frontend](https://vitalguard-ai-dc.onrender.com) and [backend API](https://vitalguard-risk-api-dc.onrender.com/docs). The frontend production fallback and live API smoke workflow target these current URLs; override `VITE_API_BASE_URL` only when deliberately pointing the frontend at another API.

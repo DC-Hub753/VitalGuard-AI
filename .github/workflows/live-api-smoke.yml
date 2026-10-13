@@ -7,7 +7,7 @@ on:
       api_base_url:
         description: "Deployed VitalGuard API base URL"
         required: false
-        default: "https://vitalguard-risk-api.onrender.com"
+        default: "https://vitalguard-risk-api-dc.onrender.com"
         type: string
 
 permissions:

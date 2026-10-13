@@ -30,5 +30,5 @@ The live smoke workflow is intentionally manual for release verification so it d
 - Hosted PostgreSQL is not confirmed configured. SQLite remains the backend default unless `DATABASE_URL` is set. A local SQLite file on a hosted ephemeral filesystem is not durable across all redeploy/restart scenarios.
 - The current WebSocket event hub is in-process and single-instance.
 - The frontend still has local synthetic cohort data alongside backend-backed alerts and history.
-- The demo uses a single configured operator account and short-lived bearer tokens; it does not provide a managed identity provider, MFA, or role-based access control.
+- The demo uses a bootstrap operator plus database-backed accounts and short-lived bearer tokens. It does not provide a managed identity provider or MFA.
 - Never use real patient data. This is not for clinical use.
