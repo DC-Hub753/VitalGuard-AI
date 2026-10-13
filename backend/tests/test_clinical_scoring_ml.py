@@ -40,7 +40,8 @@ def test_news2_missing_measurements_are_not_treated_as_normal():
     assert "heart_rate" in result["missing_parameters"]
     assert "temperature" in result["missing_parameters"]
     assert result["parameter_scores"]["spo2"] is None
-    assert result["total_score"] == 0  # partial score is 0
+    assert result["total_score"] is None  # incomplete panel must not expose a total
+    assert result["partial_score"] == 0
     assert result["clinical_risk_level"] == "Incomplete (Undetermined)"
 
 
