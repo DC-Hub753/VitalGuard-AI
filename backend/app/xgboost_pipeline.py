@@ -10,6 +10,7 @@ Specifications:
 from __future__ import annotations
 
 import logging
+import math
 from typing import Any
 import numpy as np
 from sklearn.model_selection import GroupShuffleSplit
@@ -184,6 +185,12 @@ class XGBoostPipeline:
             "test_patients": len(test_patients),
             "train_patients": len(train_patients),
             "patient_leakage_check": "passed_zero_overlap",
+            "dataset_type": "synthetic_simulated_trajectories",
+            "clinical_validation_status": "not_clinically_validated",
+            "evaluation_interpretation": (
+                "Metrics describe a reproducible synthetic benchmark only; they are not evidence of "
+                "clinical performance, generalizability, calibration, or patient safety."
+            ),
             "metrics": {
                 "auroc": round(auroc, 4),
                 "auprc": round(auprc, 4),
@@ -191,8 +198,9 @@ class XGBoostPipeline:
                 "test_positive_prevalence": round(float(np.mean(y_test)), 4),
             },
             "provenance_disclosure": (
-                "Trained on reproducible multi-patient sequential trajectories. "
-                "Clinical deployment requires certified access to credentialed MIMIC-IV / eICU cohorts."
+                "Trained and evaluated only on generated synthetic multi-patient trajectories. "
+                "No real patient cohort was used; external validation and clinical governance are "
+                "required before any clinical use."
             ),
         }
         logger.info(f"XGBoost pipeline trained: AUROC={auroc:.4f}, AUPRC={auprc:.4f}")
@@ -202,7 +210,18 @@ class XGBoostPipeline:
         if self.model is None:
             raise RuntimeError("Model is not initialized")
 
-        vector = np.array([[feature_dict[fn] for fn in FEATURE_NAMES]], dtype=float)
+        missing = [name for name in FEATURE_NAMES if name not in feature_dict]
+        if missing:
+            raise ValueError("Missing required prediction features: " + ", ".join(missing))
+
+        try:
+            values = [float(feature_dict[name]) for name in FEATURE_NAMES]
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Prediction features must all be numeric") from exc
+        if not all(math.isfinite(value) for value in values):
+            raise ValueError("Prediction features must all be finite numbers")
+
+        vector = np.asarray([values], dtype=float)
         prob = float(self.model.predict_proba(vector)[0, 1])
         score = round(prob * 100)
 

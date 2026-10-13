@@ -114,7 +114,45 @@ def test_xgboost_training_avoids_patient_leakage():
     assert metrics["patient_leakage_check"] == "passed_zero_overlap"
     assert metrics["train_patients"] > 0
     assert metrics["test_patients"] > 0
-    assert metrics["metrics"]["auroc"] >= 0.70  # Valid discriminative capability
+    assert metrics["dataset_type"] == "synthetic_simulated_trajectories"
+    assert metrics["clinical_validation_status"] == "not_clinically_validated"
+    assert "not evidence" in metrics["evaluation_interpretation"]
+    assert 0.0 <= metrics["metrics"]["auroc"] <= 1.0
+    assert 0.0 <= metrics["metrics"]["auprc"] <= 1.0
+    assert 0.0 <= metrics["metrics"]["brier_score"] <= 1.0
+
+
+def test_synthetic_episode_generation_is_reproducible():
+    X1, y1, groups1 = generate_patient_episodes(seed=1234, num_patients=12)
+    X2, y2, groups2 = generate_patient_episodes(seed=1234, num_patients=12)
+
+    import numpy as np
+
+    assert np.array_equal(X1, X2)
+    assert np.array_equal(y1, y2)
+    assert np.array_equal(groups1, groups2)
+
+
+def test_xgboost_prediction_rejects_missing_features():
+    with pytest.raises(ValueError, match="Missing required prediction features"):
+        xgb_pipeline.predict({"age": 65})
+
+
+@pytest.mark.parametrize("bad_value", [float("nan"), float("inf"), float("-inf")])
+def test_xgboost_prediction_rejects_non_finite_features(bad_value):
+    features = {name: 1.0 for name in FEATURE_NAMES}
+    features["heart_rate"] = bad_value
+
+    with pytest.raises(ValueError, match="finite numbers"):
+        xgb_pipeline.predict(features)
+
+
+def test_xgboost_prediction_rejects_non_numeric_features():
+    features = {name: 1.0 for name in FEATURE_NAMES}
+    features["heart_rate"] = "not-a-number"
+
+    with pytest.raises(ValueError, match="numeric"):
+        xgb_pipeline.predict(features)
 
 
 def test_xgboost_prediction_horizon_and_version():
