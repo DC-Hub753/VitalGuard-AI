@@ -106,21 +106,51 @@ class LiveEventHub:
 
         after_id = payload.get("after_event_id")
         patient_id = payload.get("patient_id")
-        limit = min(int(payload.get("limit", 50)), 100)
+        raw_limit = payload.get("limit", 50)
 
-        events = list_replayable_events(patient_id=patient_id, after_event_id=after_id, limit=limit)
-        for evt in events:
+        # Validate untrusted client input before it reaches the database query.
+        if isinstance(raw_limit, bool) or not isinstance(raw_limit, int) or not 1 <= raw_limit <= 100:
             await websocket.send_json({
-                **evt,
-                "type": "event.replay",
-                "original_type": evt.get("type"),
-                "is_replay": True,
+                "type": "error",
+                "message": "Replay limit must be an integer between 1 and 100",
             })
-        await websocket.send_json({
-            "type": "replay.complete",
-            "count": len(events),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
+            return
+        if after_id is not None and (
+            isinstance(after_id, bool) or not isinstance(after_id, int) or after_id < 1
+        ):
+            await websocket.send_json({
+                "type": "error",
+                "message": "after_event_id must be a positive integer",
+            })
+            return
+        if patient_id is not None and (
+            not isinstance(patient_id, str) or not patient_id.strip() or len(patient_id) > 64
+        ):
+            await websocket.send_json({
+                "type": "error",
+                "message": "patient_id must be a non-empty string of at most 64 characters",
+            })
+            return
+
+        events = list_replayable_events(patient_id=patient_id, after_event_id=after_id, limit=raw_limit)
+        for evt in events:
+            await asyncio.wait_for(
+                websocket.send_json({
+                    **evt,
+                    "type": "event.replay",
+                    "original_type": evt.get("type"),
+                    "is_replay": True,
+                }),
+                timeout=self._send_timeout_seconds,
+            )
+        await asyncio.wait_for(
+            websocket.send_json({
+                "type": "replay.complete",
+                "count": len(events),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }),
+            timeout=self._send_timeout_seconds,
+        )
 
     async def serve(self, websocket: WebSocket, subprotocol: str | None = None) -> None:
         await self.connect(websocket, subprotocol=subprotocol)
