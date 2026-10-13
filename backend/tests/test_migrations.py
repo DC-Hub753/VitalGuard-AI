@@ -48,8 +48,24 @@ def test_v1_database_upgrades_to_v2_idempotently(tmp_path):
         engine.dispose()
 
 
-def test_database_health_reports_sqlite_backend(tmp_path, monkeypatch):
+def test_database_health_reports_backend_and_current_schema(tmp_path, monkeypatch):
     monkeypatch.setenv("VITALGUARD_DB_PATH", str(tmp_path / "health.sqlite3"))
     initialize_storage()
     result = database_health()
-    assert result == {"status": "ok", "backend": "sqlite"}
+    assert result == {"status": "ok", "backend": "sqlite", "schema_version": "7"}
+
+
+def test_database_health_fails_when_migration_ledger_is_incomplete(tmp_path, monkeypatch):
+    db_path = tmp_path / "incomplete.sqlite3"
+    monkeypatch.setenv("VITALGUARD_DB_PATH", str(db_path))
+    initialize_storage()
+    engine = create_engine(f"sqlite+pysqlite:///{db_path}")
+    try:
+        with engine.begin() as connection:
+            connection.execute(MIGRATIONS.delete().where(MIGRATIONS.c.version == 7))
+    finally:
+        engine.dispose()
+
+    import pytest
+    with pytest.raises(RuntimeError, match="migrations are incomplete"):
+        database_health()
