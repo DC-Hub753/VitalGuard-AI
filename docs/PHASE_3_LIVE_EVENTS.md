@@ -24,11 +24,11 @@ After a demo observation is saved successfully, connected clients receive:
 
 The actual observation and prediction fields contain the full validated payload returned by the API. Client may send the text `ping` and receives a JSON `pong`.
 
-Subscription messages must provide a non-empty string `patient_id` of at most 64 characters. Invalid subscription and unsubscription messages return an error envelope and leave the socket available for subsequent valid messages. Structured JSON messages must be objects.
+Subscription messages must provide a non-empty string `patient_id` of at most 64 characters. Invalid subscription and unsubscription messages return an error envelope and leave the socket available for subsequent valid messages. Structured JSON messages must be objects. A newly connected socket receives all event types until it first sends a subscribe/unsubscribe action; from then on, it receives only events whose `patient_id` matches an active subscription. Events without a `patient_id` are excluded from filtered sockets. Unsubscribing the last patient leaves the socket subscribed to no patient events; it does not restore all-events mode. This is routing behavior, not patient-level authorization.
 
 ## Recovery contract
 
-WebSocket is a best-effort live notification channel, not the source of truth. Persist first, then broadcast. If a client disconnects, it must reconnect with exponential backoff and call `GET /api/v1/observations?limit=100` to reconcile persisted records. Use observation IDs as event cursors and deduplicate by ID.
+WebSocket is a best-effort live notification channel, not the source of truth. Persist first, then broadcast. If a client disconnects, it must reconnect with exponential backoff and call `GET /api/v1/observations?limit=100` to reconcile persisted records; deduplicate those REST records by `observation_id`. For WebSocket replay requests, `after_event_id` refers to the `event_id` emitted by replay, which is the ingestion-record ID. Do not interchange `observation_id` and replay `event_id`; they are distinct identifiers.
 
 ## Replay request bounds
 
