@@ -17,7 +17,7 @@ class LiveEventHub:
 
     Guarantees:
     - Events are broadcast ONLY after transaction persistence succeeds.
-    - Patient-specific subscription routing enforces least-privilege scoping.
+    - Patient-filtered streams only receive events matching subscribed patient IDs.
     - Historical replayable event query enables recovery after network dropouts.
     - Stale connections are disconnected safely without blocking peers.
     """
@@ -90,7 +90,7 @@ class LiveEventHub:
         for client in clients:
             subscribed_patients = client_filters.get(client, set())
             # Forward if no filters (subscribed to all) or patient matches
-            if not subscribed_patients or patient_id is None or patient_id in subscribed_patients:
+            if not subscribed_patients or patient_id in subscribed_patients:
                 try:
                     await asyncio.wait_for(
                         client.send_json(event), timeout=self._send_timeout_seconds
