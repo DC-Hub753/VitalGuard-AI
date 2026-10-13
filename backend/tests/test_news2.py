@@ -82,3 +82,28 @@ def test_api_returns_total_and_demo_disclaimer():
     assert body["total_score"] == 0
     assert body["demo_only"] is True
     assert body["clinically_validated_implementation"] is False
+
+
+
+def test_incomplete_panel_does_not_report_partial_sum_as_total():
+    values = baseline()
+    values.pop("heart_rate")
+    result = score_news2(values)
+
+    assert result["is_complete"] is False
+    assert "heart_rate" in result["missing_parameters"]
+    assert result["partial_score"] == 0
+    assert result["total_score"] is None
+
+
+def test_unknown_consciousness_is_missing_not_silently_scored_as_extreme():
+    result = score_news2(baseline(consciousness="not-a-valid-state"))
+
+    assert result["parameter_scores"]["consciousness"] is None
+    assert result["is_complete"] is False
+    assert result["total_score"] is None
+
+
+def test_invalid_spo2_scale_is_rejected():
+    with pytest.raises(ValueError, match="spo2_scale must be 1 or 2"):
+        score_news2(baseline(spo2_scale=3))
