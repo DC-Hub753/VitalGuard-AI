@@ -54,3 +54,46 @@ def test_failed_client_is_removed_and_other_clients_receive_event():
         assert healthy.events == [{"type": "alert.created"}]
 
     asyncio.run(scenario())
+
+
+def test_patient_filter_excludes_other_patients_and_unscoped_events():
+    async def scenario():
+        hub = LiveEventHub()
+        scoped = FakeSocket()
+        unfiltered = FakeSocket()
+        hub._clients.update({scoped, unfiltered})
+        hub._client_patients[scoped] = set()
+        hub._client_patients[unfiltered] = set()
+
+        # Explicit subscription switches this socket into scoped mode.
+        await hub.subscribe_patient(scoped, "PATIENT-A")
+        scoped.events.clear()  # ignore subscription confirmation
+
+        await hub.broadcast({"type": "observation.created", "patient_id": "PATIENT-A"})
+        await hub.broadcast({"type": "observation.created", "patient_id": "PATIENT-B"})
+        await hub.broadcast({"type": "system.notice"})
+
+        assert [event.get("patient_id") for event in scoped.events] == ["PATIENT-A"]
+        assert len(unfiltered.events) == 3
+
+    asyncio.run(scenario())
+
+
+def test_unsubscribing_last_patient_does_not_restore_all_events():
+    async def scenario():
+        hub = LiveEventHub()
+        scoped = FakeSocket()
+        hub._clients.add(scoped)
+        hub._client_patients[scoped] = set()
+
+        await hub.subscribe_patient(scoped, "PATIENT-A")
+        await hub.unsubscribe_patient(scoped, "PATIENT-A")
+        scoped.events.clear()  # ignore subscription confirmations
+
+        await hub.broadcast({"type": "observation.created", "patient_id": "PATIENT-A"})
+        await hub.broadcast({"type": "observation.created", "patient_id": "PATIENT-B"})
+        await hub.broadcast({"type": "system.notice"})
+
+        assert scoped.events == []
+
+    asyncio.run(scenario())
