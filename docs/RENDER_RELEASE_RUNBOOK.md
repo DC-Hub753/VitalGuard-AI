@@ -2,16 +2,17 @@
 
 ## Current Render services
 
-- Frontend static site: `https://vitalguard-ai-g215.onrender.com`
-  - Service ID: `srv-db56ekijnfac739dg5d0`
+- Frontend static site: `https://vitalguard-ai-dc.onrender.com`
+  - Service ID: `srv-db6cit7lk1mc73copa10`
   - Repository branch: `main`
   - Build: `npm ci && npm run build`
   - Publish directory: `dist`
-- Backend FastAPI service: `https://vitalguard-risk-api.onrender.com`
-  - Service ID: `srv-db56gvm7bikc7394de0g`
-  - Repository branch: `phase-3-risk-engine`
-  - Build: `pip install -r backend/requirements.txt`
-  - Start: `uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port $PORT`
+- Backend FastAPI service: `https://vitalguard-risk-api-dc.onrender.com`
+  - Service ID: `srv-db6c105ckfvc73ctrelg`
+  - Repository branch: `main`
+  - Root directory: `backend/`
+  - Build: `pip install -r requirements.txt`
+  - Start: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 
 ## Coordinated release steps
 
