@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 const routes = [
   { path: '/#/dashboard', heading: 'Patient Monitoring Overview' },
   { path: '/#/patients', heading: 'Patients' },
-  { path: '/#/alerts', heading: 'Alerts' },
+  { path: '/#/alerts', heading: 'Alert Operations Center', navLabel: 'Alerts' },
   { path: '/#/analytics', heading: 'Analytics' },
   { path: '/#/settings', heading: 'Settings' },
 ];
@@ -44,7 +44,7 @@ test('primary navigation moves between core workspaces', async ({ page }) => {
   await signIn(page);
   const navigation = page.getByRole('navigation', { name: 'Primary' });
   for (const route of routes.slice(1)) {
-    await navigation.getByRole('link', { name: route.heading, exact: false }).click();
+    await navigation.getByRole('link', { name: route.navLabel ?? route.heading, exact: false }).click();
     await expect(page.locator('#main-content').getByRole('heading', { name: route.heading, exact: true }).first()).toBeVisible();
   }
 });
