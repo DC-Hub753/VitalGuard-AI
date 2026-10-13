@@ -40,6 +40,8 @@ export function createLiveSocket(onEvent: (event: LiveEvent) => void, onStatus: 
   let retry = 0;
   let retryTimer: ReturnType<typeof setTimeout> | undefined;
   let heartbeat: ReturnType<typeof setInterval> | undefined;
+  let stableConnectionTimer: ReturnType<typeof setTimeout> | undefined;
+  let lastPongAt = 0;
 
   const connect = () => {
     if (stopped) return;
@@ -57,16 +59,33 @@ export function createLiveSocket(onEvent: (event: LiveEvent) => void, onStatus: 
       scheduleRetry();
       return;
     }
+    const activeSocket = socket;
     socket.onopen = () => {
-      retry = 0;
+      if (activeSocket !== socket || stopped) return;
       onStatus('connected');
+      lastPongAt = Date.now();
+      // Only reset the backoff after the connection has remained healthy for
+      // 30 seconds. Brief connect/drop loops must not retry forever at 1 second.
+      stableConnectionTimer = setTimeout(() => {
+        if (activeSocket === socket && activeSocket.readyState === WebSocket.OPEN) retry = 0;
+      }, 30000);
       heartbeat = setInterval(() => {
-        if (socket?.readyState === WebSocket.OPEN) socket.send('ping');
+        if (activeSocket !== socket || activeSocket.readyState !== WebSocket.OPEN) return;
+        if (Date.now() - lastPongAt > 60000) {
+          activeSocket.close();
+          return;
+        }
+        try {
+          activeSocket.send('ping');
+        } catch {
+          activeSocket.close();
+        }
       }, 25000);
     };
     socket.onmessage = (message) => {
       try {
         const event = JSON.parse(String(message.data)) as LiveEvent;
+        if (event.type === 'pong') lastPongAt = Date.now();
         onEvent(event);
       } catch {
         // Ignore malformed frames; the REST history remains the source of truth.
@@ -75,7 +94,10 @@ export function createLiveSocket(onEvent: (event: LiveEvent) => void, onStatus: 
     socket.onerror = () => socket?.close();
     socket.onclose = () => {
       if (heartbeat) clearInterval(heartbeat);
+      if (stableConnectionTimer) clearTimeout(stableConnectionTimer);
       heartbeat = undefined;
+      stableConnectionTimer = undefined;
+      if (socket === activeSocket) socket = null;
       if (!stopped) scheduleRetry();
     };
   };
@@ -93,6 +115,7 @@ export function createLiveSocket(onEvent: (event: LiveEvent) => void, onStatus: 
     stopped = true;
     if (retryTimer) clearTimeout(retryTimer);
     if (heartbeat) clearInterval(heartbeat);
+    if (stableConnectionTimer) clearTimeout(stableConnectionTimer);
     socket?.close();
   };
 }
