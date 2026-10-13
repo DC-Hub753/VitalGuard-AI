@@ -113,35 +113,40 @@ def validate_access_token(token: str | None) -> dict[str, str]:
 
     username = payload["sub"]
 
-    # Verify user account still exists and is active in database
+    # A database account is authoritative: disabled accounts must never fall
+    # through to the environment bootstrap operator.
     user = get_user_by_username(username)
-    if not user or not user["active"]:
-        # Fallback check for bootstrap demo-operator if configured in environment
-        env_user = os.getenv("VITALGUARD_AUTH_USERNAME", "").strip()
-        env_pwd = os.getenv("VITALGUARD_AUTH_PASSWORD", "").strip()
-        env_secret = os.getenv("VITALGUARD_AUTH_SECRET", "").strip()
-        if not env_user or not env_pwd or len(env_secret) < 32:
+    if user is not None:
+        if not user["active"]:
             raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Authentication is not configured",
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Account is disabled or no longer exists",
+                headers={"WWW-Authenticate": "Bearer"},
             )
-        if env_user and hmac.compare_digest(username, env_user):
-            return {
-                "sub": username,
-                "role": payload.get("role", "admin"),
-                "token": token,
-            }
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Account is disabled or no longer exists",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        return {
+            "sub": user["username"],
+            "role": user["role"],
+            "token": token,
+        }
 
-    return {
-        "sub": user["username"],
-        "role": user["role"],
-        "token": token,
-    }
+    # Bootstrap operator is only valid when no database account exists for the
+    # subject. Its role is always admin and is never inherited from token claims.
+    env_user = os.getenv("VITALGUARD_AUTH_USERNAME", "").strip()
+    env_pwd = os.getenv("VITALGUARD_AUTH_PASSWORD", "").strip()
+    env_secret = os.getenv("VITALGUARD_AUTH_SECRET", "").strip()
+    if not env_user or not env_pwd or len(env_secret) < 32:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication is not configured",
+        )
+    if hmac.compare_digest(username, env_user) and payload.get("role") == "admin":
+        return {"sub": username, "role": "admin", "token": token}
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Account is disabled or no longer exists",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 def authenticate_principal(
@@ -181,31 +186,30 @@ def login(request: Request, payload: LoginRequest) -> TokenResponse:
     username = payload.username
     password = payload.password
 
-    # Check database user
+    # Database accounts are authoritative, including disabled accounts. The
+    # bootstrap operator must not override an existing account's status/password.
     user = get_user_by_username(username)
     authenticated = False
     role = "nurse"
     full_name = ""
 
-    if user and user["active"]:
-        if verify_password(password, user["password_hash"]):
+    if user is not None:
+        if user["active"] and verify_password(password, user["password_hash"]):
             authenticated = True
             role = user["role"]
             full_name = user["full_name"]
-
-    # Fallback to bootstrap environment credentials if configured
-    env_user = os.getenv("VITALGUARD_AUTH_USERNAME", "").strip()
-    env_pwd = os.getenv("VITALGUARD_AUTH_PASSWORD", "").strip()
-    env_secret = os.getenv("VITALGUARD_AUTH_SECRET", "").strip()
-
-    # If no DB user found and environment auth is not configured, fail-closed with 503
-    if not user and (not env_user or not env_pwd or len(env_secret) < 32):
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Authentication is not configured",
-        )
-
-    if not authenticated and env_user and env_pwd:
+    else:
+        # Environment bootstrap credentials are available only when the username
+        # has no database record. Missing configuration is a server error, not a
+        # silent fallback to a known signing key.
+        env_user = os.getenv("VITALGUARD_AUTH_USERNAME", "").strip()
+        env_pwd = os.getenv("VITALGUARD_AUTH_PASSWORD", "").strip()
+        env_secret = os.getenv("VITALGUARD_AUTH_SECRET", "").strip()
+        if not env_user or not env_pwd or len(env_secret) < 32:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication is not configured",
+            )
         if hmac.compare_digest(username, env_user) and hmac.compare_digest(password, env_pwd):
             authenticated = True
             role = "admin"
