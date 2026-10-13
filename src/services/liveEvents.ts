@@ -83,6 +83,7 @@ export function createLiveSocket(onEvent: (event: LiveEvent) => void, onStatus: 
       }, 25000);
     };
     socket.onmessage = (message) => {
+      if (activeSocket !== socket || stopped) return;
       try {
         const event = JSON.parse(String(message.data)) as LiveEvent;
         if (event.type === 'pong') lastPongAt = Date.now();
@@ -91,13 +92,19 @@ export function createLiveSocket(onEvent: (event: LiveEvent) => void, onStatus: 
         // Ignore malformed frames; the REST history remains the source of truth.
       }
     };
-    socket.onerror = () => socket?.close();
+    socket.onerror = () => {
+      // A late error from an old socket must never close the newer connection.
+      if (activeSocket === socket) activeSocket.close();
+    };
     socket.onclose = () => {
+      // Ignore delayed close events from superseded sockets. Their timers and
+      // retry state belong to the current connection and must remain untouched.
+      if (activeSocket !== socket) return;
       if (heartbeat) clearInterval(heartbeat);
       if (stableConnectionTimer) clearTimeout(stableConnectionTimer);
       heartbeat = undefined;
       stableConnectionTimer = undefined;
-      if (socket === activeSocket) socket = null;
+      socket = null;
       if (!stopped) scheduleRetry();
     };
   };
