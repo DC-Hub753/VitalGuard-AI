@@ -28,6 +28,10 @@ The actual observation and prediction fields contain the full validated payload 
 
 WebSocket is a best-effort live notification channel, not the source of truth. Persist first, then broadcast. If a client disconnects, it must reconnect with exponential backoff and call `GET /api/v1/observations?limit=100` to reconcile persisted records. Use observation IDs as event cursors and deduplicate by ID.
 
+## Replay request bounds
+
+Replay requests accept an optional positive integer `after_event_id`, an optional non-empty `patient_id` up to 64 characters, and a `limit` from 1 to 100 (default 50). Invalid fields receive an error response without querying storage. Replay sends use the hub's bounded send timeout so a stalled socket cannot hold replay delivery indefinitely.
+
 ## Current limitations
 
 - In-memory fan-out works within a single backend process only. Multiple Render instances need a shared broker or database-backed outbox.
