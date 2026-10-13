@@ -168,9 +168,19 @@ def operational_metrics(principal: dict = Depends(require_permission(PERM_OPS_ME
 
 
 @app.websocket("/api/v1/live")
-async def live_socket(websocket: WebSocket, token: str | None = Query(default=None)):
+async def live_socket(websocket: WebSocket):
     from .auth import validate_access_token
     from .permissions import role_has_permission, PERM_LIVE_SUBSCRIBE
+
+    # Browser WebSocket APIs cannot set Authorization headers. Accept the access
+    # token as a dedicated subprotocol instead of a URL query parameter, which
+    # can leak through reverse-proxy/access logs and monitoring systems.
+    offered_protocols = websocket.scope.get("subprotocols", [])
+    token = next(
+        (protocol[len("vg-token."):] for protocol in offered_protocols
+         if protocol.startswith("vg-token.") and len(protocol) > len("vg-token.")),
+        None,
+    )
     try:
         principal = validate_access_token(token)
         if not role_has_permission(principal.get("role", ""), PERM_LIVE_SUBSCRIBE):
@@ -179,7 +189,7 @@ async def live_socket(websocket: WebSocket, token: str | None = Query(default=No
     except HTTPException:
         await websocket.close(code=1008, reason="Authentication required")
         return
-    await hub.serve(websocket)
+    await hub.serve(websocket, subprotocol="vitalguard-live")
 
 @app.get("/api/v1/model/info")
 def model_info(principal: dict = Depends(authenticate_principal)):
