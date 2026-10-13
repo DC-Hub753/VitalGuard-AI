@@ -52,7 +52,7 @@ export function createLiveSocket(onEvent: (event: LiveEvent) => void, onStatus: 
         onStatus('offline');
         return;
       }
-      socket = new WebSocket(`${wsBase}/api/v1/live?token=${encodeURIComponent(token)}`);
+      socket = new WebSocket(`${wsBase}/api/v1/live`, ['vitalguard-live', `vg-token.${token}`]);
     } catch {
       scheduleRetry();
       return;

@@ -30,8 +30,8 @@ class LiveEventHub:
         self._lock = asyncio.Lock()
         self._send_timeout_seconds = send_timeout_seconds
 
-    async def connect(self, websocket: WebSocket) -> None:
-        await websocket.accept()
+    async def connect(self, websocket: WebSocket, subprotocol: str | None = None) -> None:
+        await websocket.accept(subprotocol=subprotocol)
         async with self._lock:
             self._clients.add(websocket)
             self._client_patients[websocket] = set()  # initially empty or defaults to all if empty
@@ -122,8 +122,8 @@ class LiveEventHub:
             "timestamp": datetime.now(timezone.utc).isoformat(),
         })
 
-    async def serve(self, websocket: WebSocket) -> None:
-        await self.connect(websocket)
+    async def serve(self, websocket: WebSocket, subprotocol: str | None = None) -> None:
+        await self.connect(websocket, subprotocol=subprotocol)
         try:
             while True:
                 message_text = await websocket.receive_text()

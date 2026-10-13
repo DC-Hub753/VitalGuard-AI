@@ -92,7 +92,7 @@ def test_ingest_canonical_observation_persists_before_websocket_broadcast(client
     token = client.headers["Authorization"].split(" ", 1)[1]
     payload = make_canonical_payload(patient_id="DEMO-P001", event_id="evt-canon-101")
 
-    with client.websocket_connect(f"/api/v1/live?token={token}") as websocket:
+    with client.websocket_connect("/api/v1/live", subprotocols=["vitalguard-live", f"vg-token.{token}"]) as websocket:
         init_evt = websocket.receive_json()
         assert init_evt["type"] == "connected"
 
@@ -194,8 +194,8 @@ def test_historical_replay_adapter_labels_provenance(client):
 def test_websocket_patient_subscription_scoping(client):
     token = client.headers["Authorization"].split(" ", 1)[1]
 
-    with client.websocket_connect(f"/api/v1/live?token={token}") as ws_sub1, \
-         client.websocket_connect(f"/api/v1/live?token={token}") as ws_sub2:
+    with client.websocket_connect("/api/v1/live", subprotocols=["vitalguard-live", f"vg-token.{token}"]) as ws_sub1, \
+         client.websocket_connect("/api/v1/live", subprotocols=["vitalguard-live", f"vg-token.{token}"]) as ws_sub2:
 
         assert ws_sub1.receive_json()["type"] == "connected"
         assert ws_sub2.receive_json()["type"] == "connected"
@@ -241,7 +241,7 @@ def test_missed_event_recovery_via_websocket_and_rest(client):
 
     # 2. Recover via WebSocket replay request
     token = client.headers["Authorization"].split(" ", 1)[1]
-    with client.websocket_connect(f"/api/v1/live?token={token}") as websocket:
+    with client.websocket_connect("/api/v1/live", subprotocols=["vitalguard-live", f"vg-token.{token}"]) as websocket:
         assert websocket.receive_json()["type"] == "connected"
 
         # Request events after first_event_id
