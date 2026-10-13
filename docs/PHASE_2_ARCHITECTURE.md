@@ -9,7 +9,7 @@
 Browser (React + TypeScript + Vite)
   | HTTPS REST requests / WebSocket
   v
-Render FastAPI service (branch: phase-3-risk-engine)
+Render FastAPI service (branch: main)
   |-- risk/model functions (synthetic LogisticRegression)
   |-- observation/history functions
   |-- alert/timeline/trend routes
@@ -21,7 +21,7 @@ SQLAlchemy storage adapter
   |-- otherwise SQLite fallback
 ```
 
-The frontend service is deployed from `main`; the backend service is deployed from `phase-3-risk-engine`. They are separate deployments. A change to `main` does not, by itself, update the backend branch.
+The frontend and backend services for the user's own repository are both deployed from `main` as separate Render services. A commit to `main` can trigger both deployments; verify each service independently.
 
 ## 2. Trust boundaries
 
@@ -71,8 +71,8 @@ Do not broadcast an event for a write that failed to commit. Retries must not cr
 
 ## 6. Deployment boundaries
 
-- Frontend service: Render static site, branch `main`, publish directory `dist`.
-- Backend service: Render web service, branch `phase-3-risk-engine`, FastAPI app under `backend`.
+- Frontend service: Render static site, branch `main`, publish directory `dist` (`https://vitalguard-ai-dc.onrender.com`).
+- Backend service: Render web service, branch `main`, root directory `backend/` (`https://vitalguard-risk-api-dc.onrender.com`).
 - API base URL is currently configured in frontend code/environment; no credentials may be bundled into frontend assets.
 - Current backend event hub is in-process and the service is configured for one instance.
 - Database choice and durable hosted PostgreSQL configuration must be verified before sensitive use.
