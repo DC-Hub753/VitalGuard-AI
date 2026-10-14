@@ -364,8 +364,10 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
     ];
     await api.ingestReplayBatch(records);
     setFeedMode('replay');
+    // Re-read persisted observations immediately; do not require a manual page reload.
+    await refresh();
     push('Historical Replay Batch Ingested', 'Test replay batch ingested with source_mode="historical_replay".', 'info', 'P-SIM-003');
-  }, [push]);
+  }, [push, refresh]);
 
   // Compatibility shims
   const acknowledgeShim = useCallback((id: string) => { void acknowledgeAlert(id); }, [acknowledgeAlert]);
