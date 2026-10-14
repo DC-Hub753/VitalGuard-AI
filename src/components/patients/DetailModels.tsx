@@ -1,5 +1,5 @@
 import { ArrowLeft, Heart, Droplets, Gauge, Thermometer, Wind } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { VitalReading, RiskSignal } from '../../types/index.ts';
 import { CHART_COLORS } from '../../theme/tokens.ts';
 import { formatTimeAgo } from '../../utils/format.ts';
@@ -35,9 +35,10 @@ export function vitalCards(v: VitalReading, first: VitalReading | undefined, his
 export function DetailHeader({ id, ward, bed, age, sex, scenario, updated }: {
   id: string; ward: string; bed: string; age: number; sex: string; scenario: string; updated: string;
 }) {
+  const navigate = useNavigate();
   return (
     <div className="flex flex-wrap items-center gap-2.5">
-      <Link to="/patients" className="btn-secondary !py-1.5 !text-[13px]"><ArrowLeft size={14} aria-hidden /> Back</Link>
+      <button type="button" onClick={() => navigate('/patients', { replace: true })} className="btn-secondary !py-1.5 !text-[13px]"><ArrowLeft size={14} aria-hidden /> Back</button>
       <h2 className="font-display text-[22px] font-extrabold tracking-tight ml-1">Patient {id}</h2>
       <span className="text-sm text-slate-500">{ward} · Bed {bed} · Age {age} · {sex}</span>
       <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-teal-50 text-teal-700 border border-teal-200/70 dark:bg-teal-950/50 dark:text-teal-200 dark:border-teal-900/60 capitalize">Trajectory: {scenario}</span>
