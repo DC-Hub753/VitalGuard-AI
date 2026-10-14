@@ -16,7 +16,7 @@ export function AnalyticsPage() {
     { name: 'Low', value: vals.filter((r) => r.level === 'low').length },
   ];
   const avg = Math.round(vals.reduce((s, r) => s + r.score, 0) / Math.max(1, vals.length));
-  const wors = patients.filter((p) => risks[p.id].trend === 'worsening').length;
+  const wors = patients.filter((p) => risks[p.id]?.trend === 'worsening').length;
   const stab = patients.filter((p) => risks[p.id].trend === 'stable').length;
   const rec = patients.filter((p) => risks[p.id].trend === 'recovering').length;
   const scen = [
