@@ -1,0 +1,25 @@
+{
+  "id": "/",
+  "name": "VitalGuard AI — Clinical Intelligence",
+  "short_name": "VitalGuard AI",
+  "description": "AI-assisted clinical decision support for monitoring patient deterioration.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "categories": [
+    "medical",
+    "health",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "/icons/vitalguard.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
