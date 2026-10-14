@@ -80,7 +80,7 @@ test('PWA manifest, service worker, and offline app-shell fallback work', async 
   await context.setOffline(true);
   try {
     await page.reload();
-    await expect(page.getByRole('heading', { name: /Sign in|Welcome back/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('heading', { name: 'Clinical Portal Login' })).toBeVisible({ timeout: 10_000 });
   } finally {
     await context.setOffline(false);
   }
