@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { api } from '../services/api.ts';
 import { SectionCard } from '../components/ui/Primitives.tsx';
 import { ExplanationPanel } from '../components/risk/ExplanationPanel.tsx';
 import { VitalLine } from '../components/charts/Vitals.tsx';
@@ -28,8 +30,38 @@ export function VitalCharts({ patientId }: { patientId: string }) {
   const { latest, histories } = useSimulation();
   const v = latest[patientId];
   const h = histories[patientId] ?? [];
-  if (!v) return null;
-  const rows = h.map((x) => ({ t: formatTimeAgo(x.timestamp), hr: x.heartRate, spo2: x.spo2, sys: x.systolicBp, dia: x.diastolicBp, temp: x.temperature, rr: x.respiratoryRate }));
+  const [persistedRows, setPersistedRows] = useState<Array<{ t: string; hr: number; spo2: number; sys: number; dia: number; temp: number; rr: number }>>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  useEffect(() => {
+    let active = true;
+    setHistoryLoading(true);
+    void api.listObservations(patientId, 100).then((response) => {
+      if (!active) return;
+      const items = [...(response.items ?? [])].reverse();
+      setPersistedRows(items.map((obs: any) => {
+        const input = obs.inputs ?? obs.observation ?? {};
+        return {
+          t: formatTimeAgo(obs.created_at ?? obs.observed_at ?? new Date().toISOString()),
+          hr: Number(input.heart_rate ?? input.heartRate ?? 75),
+          spo2: Number(input.spo2 ?? 98),
+          sys: Number(input.systolic_bp ?? input.systolicBp ?? 120),
+          dia: Number(input.diastolic_bp ?? input.diastolicBp ?? 80),
+          temp: Number(input.temperature ?? 37),
+          rr: Number(input.respiratory_rate ?? input.respiratoryRate ?? 16),
+        };
+      }));
+    }).catch(() => {
+      if (active) setPersistedRows([]);
+    }).finally(() => { if (active) setHistoryLoading(false); });
+    return () => { active = false; };
+  }, [patientId]);
+  const rows = persistedRows.length ? persistedRows : h.map((x) => ({ t: formatTimeAgo(x.timestamp), hr: x.heartRate, spo2: x.spo2, sys: x.systolicBp, dia: x.diastolicBp, temp: x.temperature, rr: x.respiratoryRate }));
+  const chartLatest = v ?? (rows.length ? {
+    heartRate: rows[rows.length - 1].hr, spo2: rows[rows.length - 1].spo2,
+    systolicBp: rows[rows.length - 1].sys, diastolicBp: rows[rows.length - 1].dia,
+    temperature: rows[rows.length - 1].temp, respiratoryRate: rows[rows.length - 1].rr,
+  } : undefined);
+  if (!chartLatest) return <div className="mt-4"><SectionCard title="Vital trends" hint="Persisted observations for this patient" label="Vital trends">{historyLoading ? <p className="text-sm text-slate-500">Loading patient observations…</p> : <p className="text-sm text-slate-500">No stored observations are available for this patient yet. Use Historical Replay (QA) and retry.</p>}</SectionCard></div>;
   const C = (t: string, hint: string, l: string, val: string, u: string, lines: { key: string; color: string; name: string }[], unit: string) => (
     <SectionCard key={l} title={t} hint={hint} label={`${l} trend`}>
       <div className="flex items-baseline gap-2"><p className="metric text-2xl">{val}</p><p className="text-xs text-slate-400">{u}</p></div>
@@ -38,11 +70,11 @@ export function VitalCharts({ patientId }: { patientId: string }) {
   );
   return (
     <div className="mt-4 grid lg:grid-cols-2 gap-4 items-start">
-      {C('Heart rate', 'Beats per minute', 'hr', String(Math.round(v.heartRate)), 'bpm', [{ key: 'hr', color: CHART_COLORS.heartRate, name: 'HR' }], 'bpm')}
-      {C('SpO₂', 'Oxygen saturation', 'spo2', String(Math.round(v.spo2)), '%', [{ key: 'spo2', color: CHART_COLORS.spo2, name: 'SpO₂' }], '%')}
-      {C('Blood pressure', 'Systolic + diastolic pair', 'bp', `${v.systolicBp}/${v.diastolicBp}`, 'mmHg', [{ key: 'sys', color: CHART_COLORS.systolic, name: 'Systolic' }, { key: 'dia', color: CHART_COLORS.diastolic, name: 'Diastolic' }], 'mmHg')}
-      {C('Temperature', 'Degrees Celsius', 'temp', v.temperature.toFixed(1), '°C', [{ key: 'temp', color: CHART_COLORS.temperature, name: 'Temp' }], '°C')}
-      {C('Respiratory rate', 'Breaths per minute', 'rr', String(Math.round(v.respiratoryRate)), '/min', [{ key: 'rr', color: CHART_COLORS.respiratoryRate, name: 'RR' }], '/min')}
+      {C('Heart rate', 'Beats per minute', 'hr', String(Math.round(chartLatest.heartRate)), 'bpm', [{ key: 'hr', color: CHART_COLORS.heartRate, name: 'HR' }], 'bpm')}
+      {C('SpO₂', 'Oxygen saturation', 'spo2', String(Math.round(chartLatest.spo2)), '%', [{ key: 'spo2', color: CHART_COLORS.spo2, name: 'SpO₂' }], '%')}
+      {C('Blood pressure', 'Systolic + diastolic pair', 'bp', `${chartLatest.systolicBp}/${chartLatest.diastolicBp}`, 'mmHg', [{ key: 'sys', color: CHART_COLORS.systolic, name: 'Systolic' }, { key: 'dia', color: CHART_COLORS.diastolic, name: 'Diastolic' }], 'mmHg')}
+      {C('Temperature', 'Degrees Celsius', 'temp', chartLatest.temperature.toFixed(1), '°C', [{ key: 'temp', color: CHART_COLORS.temperature, name: 'Temp' }], '°C')}
+      {C('Respiratory rate', 'Breaths per minute', 'rr', String(Math.round(chartLatest.respiratoryRate)), '/min', [{ key: 'rr', color: CHART_COLORS.respiratoryRate, name: 'RR' }], '/min')}
       <TimelineCard patientId={patientId} />
     </div>
   );
