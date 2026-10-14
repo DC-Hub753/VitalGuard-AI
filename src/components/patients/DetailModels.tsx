@@ -1,5 +1,5 @@
 import { ArrowLeft, Heart, Droplets, Gauge, Thermometer, Wind } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import type { VitalReading, RiskSignal } from '../../types/index.ts';
 import { CHART_COLORS } from '../../theme/tokens.ts';
 import { formatTimeAgo } from '../../utils/format.ts';
