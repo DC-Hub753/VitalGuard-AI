@@ -17,8 +17,8 @@ export function AnalyticsPage() {
   ];
   const avg = Math.round(vals.reduce((s, r) => s + r.score, 0) / Math.max(1, vals.length));
   const wors = patients.filter((p) => risks[p.id]?.trend === 'worsening').length;
-  const stab = patients.filter((p) => risks[p.id].trend === 'stable').length;
-  const rec = patients.filter((p) => risks[p.id].trend === 'recovering').length;
+  const stab = patients.filter((p) => risks[p.id]?.trend === 'stable').length;
+  const rec = patients.filter((p) => risks[p.id]?.trend === 'recovering').length;
   const scen = [
     { name: 'Stable', value: patients.filter((p) => p.scenario === 'stable').length },
     { name: 'Worsening', value: patients.filter((p) => p.scenario === 'worsening').length },
