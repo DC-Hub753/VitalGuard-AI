@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(30000),
     });
 
     if (!response.ok) {

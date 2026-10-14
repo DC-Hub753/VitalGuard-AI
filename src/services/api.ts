@@ -130,14 +130,9 @@ export const api = {
 
   // Historical replay ingestion for controlled QA
   ingestReplayBatch: (items: any[]) =>
-    request<any>('/api/v1/ingestion/batch', {
+    request<any>('/api/v1/ingestion/replay', {
       method: 'POST',
-      body: JSON.stringify({
-        batch_id: 'replay-' + Date.now(),
-        source_id: 'qa-replay-tool',
-        source_mode: 'historical_replay',
-        records: items,
-      }),
+      body: JSON.stringify({ source_name: 'vitalguard-qa-replay', records: items }),
     }),
 
   health: () => get<{ status: string; model_version: string; demo_only: boolean }>('/health'),

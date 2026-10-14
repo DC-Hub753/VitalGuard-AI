@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ArrowUpRight, ShieldCheck, Waves } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, ShieldCheck, Waves, History } from 'lucide-react';
 import { Shell } from '../components/layout/Shell.tsx';
 import { PageHeader, SectionCard } from '../components/ui/Primitives.tsx';
 import { EmptyState } from '../components/ui/States.tsx';
@@ -16,7 +16,7 @@ import { DataQualityPanel } from '../components/dashboard/DataQualityPanel.tsx';
 import { BackendObservationHistory } from '../components/dashboard/BackendObservationHistory.tsx';
 
 export function DashboardPage() {
-  const { patients, risks, latest, alerts, prioritization, connectionStatus } = useSimulation();
+  const { patients, risks, latest, alerts, prioritization, connectionStatus, triggerReplayBurst, loading } = useSimulation();
   const [filters, setFilters] = useFilterState();
   const filtered = useMemo(() => filterCohort(patients, risks, filters), [patients, risks, filters]);
   const dist = useMemo(() => {
@@ -62,6 +62,10 @@ export function DashboardPage() {
           crumbs={[{ label: 'Dashboard' }]} />
       </div>
       <div className="mt-5"><SummaryCards patients={patients} risks={risks} openAlerts={openAlerts} /></div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-3">
+        <div><p className="text-sm font-semibold">Historical Replay (QA)</p><p className="text-xs text-slate-500">Replay timestamped synthetic observations into persisted history for chart and workflow testing.</p></div>
+        <button type="button" className="btn-secondary inline-flex items-center gap-2" disabled={loading} onClick={() => void triggerReplayBurst()}><History size={14} /> Run QA replay</button>
+      </div>
       <DataQualityPanel />
       <BackendObservationHistory />
       {hero && heroVitals && heroPatient && <HeroPatient hero={hero} vitals={heroVitals} patient={heroPatient} />}

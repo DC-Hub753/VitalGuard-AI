@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle2, ChevronDown, Clock3, History, RefreshCw, ShieldAlert, WifiOff } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronDown, Clock3, History, RefreshCw, ShieldAlert, WifiOff, Trash2 } from 'lucide-react';
 import { APP_CONFIG } from '../../services/config.ts';
 import { useLiveEvents } from '../../services/useLiveEvents.ts';
 
@@ -111,6 +111,21 @@ export function BackendAlertInbox() {
     }
   };
 
+  const deleteAlert = async (id: number) => {
+    if (!window.confirm(`Delete demo alert #${id}? Its deletion will remain in the audit log.`)) return;
+    setBusyId(id);
+    try {
+      await apiRequest(`/api/v1/alerts/${id}`, { method: 'DELETE' });
+      setItems((current) => current.filter((item) => item.id !== id));
+      setAuditByAlert((current) => { const next = { ...current }; delete next[id]; return next; });
+      setError('');
+    } catch {
+      setError(`Could not delete alert #${id}. Check your role permissions and try again.`);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const showAudit = async (id: number) => {
     if (expandedId === id) {
       setExpandedId(null);
@@ -197,6 +212,7 @@ export function BackendAlertInbox() {
                 </button>
                 {alert.status === 'open' && <button className="btn-secondary !text-xs" disabled={busyId === alert.id} onClick={() => void transition(alert.id, 'acknowledge')}>Acknowledge</button>}
                 {alert.status !== 'resolved' && <button className="btn-primary !text-xs" disabled={busyId === alert.id} onClick={() => void transition(alert.id, 'resolve')}>Resolve</button>}
+                <button className="btn-secondary !text-xs text-rose-600" disabled={busyId === alert.id} onClick={() => void deleteAlert(alert.id)} aria-label={`Delete alert ${alert.id}`}><Trash2 size={13} /> Delete</button>
               </div>
               {expandedId === alert.id && <div className="w-full basis-full rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3">
                 <p className="text-xs font-bold flex items-center gap-1.5"><History size={13} /> Alert audit timeline</p>
