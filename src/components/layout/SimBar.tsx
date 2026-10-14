@@ -1,4 +1,4 @@
-import { Activity, Clock3, Database, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { Activity, Clock3, RefreshCw, WifiOff } from 'lucide-react';
 import { useSimulation } from '../../store/useSimulation.ts';
 
 export function SimBar() {
@@ -8,7 +8,6 @@ export function SimBar() {
     lastObservationAt,
     prioritization,
     refresh,
-    triggerReplayBurst,
     loading,
   } = useSimulation();
 
@@ -120,14 +119,6 @@ export function SimBar() {
             Sync State
           </button>
 
-          <button
-            onClick={() => void triggerReplayBurst()}
-            className="btn-secondary !py-1.5 !text-xs border-indigo-200 text-indigo-700 dark:border-indigo-900 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
-            title="Inject a controlled batch of historical observations for testing"
-          >
-            <Database size={13} aria-hidden />
-            Historical Replay (QA)
-          </button>
         </div>
       </div>
     </div>
