@@ -12,7 +12,7 @@ export function VitalLine({ data, lines, height = 170, unit }: {
           <XAxis dataKey="t" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} minTickGap={30} interval="preserveStartEnd" />
           <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} domain={['auto', 'auto']} width={38} />
           <Tooltip content={<ChartTooltip unit={unit} />} cursor={{ stroke: '#14b8a6', strokeDasharray: '4 4' }} />
-          {lines.map((l) => <Line key={l.key} type="monotone" dataKey={l.key} name={l.name} stroke={l.color} strokeWidth={2.5} dot={false} activeDot={{ r: 4, strokeWidth: 2 }} />)}
+          {lines.map((l) => <Line key={l.key} type="monotone" dataKey={l.key} name={l.name} stroke={l.color} strokeWidth={2.5} dot={data.length <= 1 ? { r: 4, fill: l.color, stroke: l.color } : false} activeDot={{ r: 4, strokeWidth: 2 }} />)}
         </LineChart>
       </ResponsiveContainer>
     </div>
