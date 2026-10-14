@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { MapPin } from 'lucide-react';
 import { Shell } from '../components/layout/Shell.tsx';
 import { RiskBadge } from '../components/ui/Badges.tsx';
@@ -19,20 +19,21 @@ export function fmtAgo(iso: string): string {
 }
 export function PatientDetailPage() {
   const { patientId = '' } = useParams();
+  const navigate = useNavigate();
   const { patients, latest, risks, histories } = useSimulation();
   const patient = patients.find((p) => p.id === patientId);
   if (!patient) {
     return (
       <Shell title="Patient not found" subtitle="Directory">
         <EmptyState title={`No patient ${patientId} found.`}
-          action={<Link to="/patients" className="btn-primary">Back to directory</Link>} />
+          action={<button type="button" onClick={() => navigate('/patients')} className="btn-primary">Back to directory</button>} />
       </Shell>
     );
   }
   const v = latest[patient.id];
   const r = risks[patient.id];
   const h = histories[patient.id] ?? [];
-  if (!v || !r) return <Shell title={`Patient ${patient.id}`} subtitle="Patient detail"><div className="mb-4"><Link to="/patients" className="btn-secondary">← Back to patients</Link></div><EmptyState title="No persisted observations yet" hint="This patient has no stored vital readings available for charts. Sync observations or use Historical Replay (QA), then refresh this patient." action={<Link to="/patients" className="btn-primary">Back to directory</Link>} /></Shell>;
+  if (!v || !r) return <Shell title={`Patient ${patient.id}`} subtitle="Patient detail"><div className="mb-4"><button type="button" onClick={() => navigate('/patients')} className="btn-secondary">← Back to patients</button></div><EmptyState title="No persisted observations yet" hint="This patient has no stored vital readings available for charts. Sync observations or use Historical Replay (QA), then refresh this patient." action={<Link to="/patients" className="btn-primary">Back to directory</Link>} /></Shell>;
   const cards = vitalCards(v, h[0], h);
   const delta = riskDelta(r);
   return (
