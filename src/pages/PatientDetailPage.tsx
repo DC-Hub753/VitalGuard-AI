@@ -26,7 +26,7 @@ export function PatientDetailPage() {
     return (
       <Shell title="Patient not found" subtitle="Directory">
         <EmptyState title={`No patient ${patientId} found.`}
-          action={<button type="button" onClick={() => navigate('/patients')} className="btn-primary">Back to directory</button>} />
+          action={<Link to="/patients" className="btn-primary">Back to directory</Link>} />
       </Shell>
     );
   }
