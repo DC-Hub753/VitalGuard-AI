@@ -337,30 +337,9 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
   const triggerReplayBurst = useCallback(async () => {
     const now = new Date().toISOString();
     const records = [
-      {
-        patient_id: 'P-SIM-003',
-        observation_id: 'replay-' + Date.now() + '-1',
-        measurement_type: 'heart_rate',
-        numeric_value: 128,
-        canonical_unit: 'bpm',
-        observed_at: now,
-      },
-      {
-        patient_id: 'P-SIM-003',
-        observation_id: 'replay-' + Date.now() + '-2',
-        measurement_type: 'spo2',
-        numeric_value: 88,
-        canonical_unit: '%',
-        observed_at: now,
-      },
-      {
-        patient_id: 'P-SIM-006',
-        observation_id: 'replay-' + Date.now() + '-3',
-        measurement_type: 'systolic_blood_pressure',
-        numeric_value: 98,
-        canonical_unit: 'mmHg',
-        observed_at: now,
-      },
+      { patient_id: 'DEMO-001', event_id: 'replay-' + Date.now() + '-1', observed_at: now, vitals: { heart_rate: 128, spo2: 88, systolic_bp: 98, diastolic_bp: 64, temperature: 38.2, respiratory_rate: 26, age: 65 } },
+      { patient_id: 'DEMO-001', event_id: 'replay-' + Date.now() + '-2', observed_at: new Date(Date.now() - 60_000).toISOString(), vitals: { heart_rate: 116, spo2: 91, systolic_bp: 104, diastolic_bp: 68, temperature: 37.9, respiratory_rate: 22, age: 65 } },
+      { patient_id: 'DEMO-002', event_id: 'replay-' + Date.now() + '-3', observed_at: new Date(Date.now() - 120_000).toISOString(), vitals: { heart_rate: 92, spo2: 96, systolic_bp: 118, diastolic_bp: 76, temperature: 37.1, respiratory_rate: 17, age: 54 } },
     ];
     await api.ingestReplayBatch(records);
     setFeedMode('replay');
