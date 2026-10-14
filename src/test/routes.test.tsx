@@ -59,11 +59,13 @@ describe('routes render', () => {
     expect(screen.getByRole('tab', { name: 'All Alerts' })).toBeTruthy();
   });
   
-it('dashboard shows live telemetry and backend-backed monitoring panels', () => {
+it('dashboard shows live telemetry without replay and history panels', () => {
   wrap(<DashboardPage />);
   expect(screen.getByText(/LIVE TELEMETRY/)).toBeTruthy();
   expect(screen.getByRole('heading', { name: 'Patient Monitoring Overview' })).toBeTruthy();
-  expect(screen.getByText('Observation data quality')).toBeTruthy();
+  expect(screen.queryByText('Observation data quality')).toBeNull();
+  expect(screen.queryByText('Historical Replay (QA)')).toBeNull();
+  expect(screen.queryByText('Observation history')).toBeNull();
 });
 
   it('analytics renders', () => { wrap(<AnalyticsPage />); expect(screen.getAllByText('Analytics').length).toBeGreaterThan(0); expect(screen.getByText('DEMO ANALYTICS')).toBeTruthy(); });
