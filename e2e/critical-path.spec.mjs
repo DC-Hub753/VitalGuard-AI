@@ -56,3 +56,32 @@ test('mobile navigation opens and routes to Settings', async ({ page }) => {
   await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Settings', exact: false }).click();
   await expect(page.locator('#main-content').getByRole('heading', { name: 'Settings', exact: true }).first()).toBeVisible();
 });
+
+test('PWA manifest, service worker, and offline app-shell fallback work', async ({ page, context }) => {
+  const manifestResponse = await page.request.get('/manifest.webmanifest');
+  expect(manifestResponse.ok()).toBeTruthy();
+  const manifest = await manifestResponse.json();
+  expect(manifest.name).toBe('VitalGuard AI');
+  expect(manifest.display).toBe('standalone');
+  expect(manifest.icons.some(icon => icon.src === '/icons/vitalguard.svg')).toBeTruthy();
+
+  await page.goto('/#/login');
+  await page.evaluate(async () => {
+    if (!('serviceWorker' in navigator)) throw new Error('Service workers are unavailable');
+    await navigator.serviceWorker.ready;
+  });
+  const registration = await page.evaluate(() => ({
+    active: Boolean(navigator.serviceWorker.controller),
+    scope: navigator.serviceWorker.controller?.scriptURL ?? null,
+  }));
+  expect(registration.active).toBeTruthy();
+  expect(registration.scope).toContain('/sw.js');
+
+  await context.setOffline(true);
+  try {
+    await page.reload();
+    await expect(page.getByRole('heading', { name: /Sign in|Welcome back/i })).toBeVisible({ timeout: 10_000 });
+  } finally {
+    await context.setOffline(false);
+  }
+});
