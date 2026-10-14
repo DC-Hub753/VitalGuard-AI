@@ -1,9 +1,10 @@
 """HTTP endpoints for durable alert lifecycle, prioritization, and escalation."""
 from typing import Literal
+import json
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import delete, select
+from sqlalchemy import delete, insert, select
 from .storage import _engine
-from .storage_schema import alerts
+from .storage_schema import alerts, audit_events
 from pydantic import BaseModel, ConfigDict, Field
 
 from .alert_service import list_alert_audit, list_alerts, transition_alert_state
@@ -273,13 +274,13 @@ def delete_alert(
             ).mappings().first()
             if row is None:
                 raise HTTPException(status_code=404, detail="Alert not found")
-            record_audit_event(
+            connection.execute(insert(audit_events).values(
                 entity_type="alert",
                 entity_id=str(alert_id),
                 action="alert_deleted",
                 actor=principal["sub"],
-                details={"patient_id": row["patient_id"], "title": row["title"]},
-            )
+                details_json=json.dumps({"patient_id": row["patient_id"], "title": row["title"]}),
+            ))
             connection.execute(delete(alerts).where(alerts.c.id == alert_id))
     finally:
         engine.dispose()
