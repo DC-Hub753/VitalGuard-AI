@@ -61,7 +61,7 @@ test('PWA manifest, service worker, and offline app-shell fallback work', async 
   const manifestResponse = await page.request.get('/manifest.webmanifest');
   expect(manifestResponse.ok()).toBeTruthy();
   const manifest = await manifestResponse.json();
-  expect(manifest.name).toBe('VitalGuard AI');
+  expect(manifest.name).toBe('VitalGuard AI — Clinical Intelligence');
   expect(manifest.display).toBe('standalone');
   expect(manifest.icons.some(icon => icon.src === '/icons/vitalguard.svg')).toBeTruthy();
 
