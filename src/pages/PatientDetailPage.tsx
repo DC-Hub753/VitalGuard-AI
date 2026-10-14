@@ -32,7 +32,7 @@ export function PatientDetailPage() {
   const v = latest[patient.id];
   const r = risks[patient.id];
   const h = histories[patient.id] ?? [];
-  if (!v || !r) return <Shell title="Loading" subtitle="…"><EmptyState title="Loading vitals…" /></Shell>;
+  if (!v || !r) return <Shell title={`Patient ${patient.id}`} subtitle="Patient detail"><div className="mb-4"><Link to="/patients" className="btn-secondary">← Back to patients</Link></div><EmptyState title="No persisted observations yet" hint="This patient has no stored vital readings available for charts. Sync observations or use Historical Replay (QA), then refresh this patient." action={<Link to="/patients" className="btn-primary">Back to directory</Link>} /></Shell>;
   const cards = vitalCards(v, h[0], h);
   const delta = riskDelta(r);
   return (
